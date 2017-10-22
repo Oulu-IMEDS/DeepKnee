@@ -32,6 +32,15 @@ However, you can run the codes as they are and just use the parameters fixed in 
 Our model learns localized radiological findings as we imposed prior anatomical knowledge to teh network architecture. Here are some examples of attention maps and predictions (Kellgren-Lawrence grade 2 ground truth):
 
 <img src="https://github.com/lext/DeepKnee/blob/master/pics/15_2_R_1_1_1_3_1_0_own.jpg" width="260"/> <img src="https://github.com/lext/DeepKnee/blob/master/pics/235_2_R_3_3_0_0_1_1_own.jpg" width="260"/>  <img src="https://github.com/lext/DeepKnee/blob/master/pics/77_2_R_2_0_0_0_0_1_own.jpg" width="260"/> 
+
+## Upcoming changes
+
+- [x] Codes for the main experiements (Supplementary information)
+- [ ] MOST and OAI cohorts bounding box annotations
+- [ ] Dataset generation scripts
+- [ ] More benchmarks with the pre-trained models (e.g. DenseNets and Deeper ResNets)
+- [ ] Better documentation
+
 ## License
 
 This code is freely available only for research purpuses. 
