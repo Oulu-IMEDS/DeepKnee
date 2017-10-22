@@ -33,11 +33,11 @@ Our model learns localized radiological findings as we imposed prior anatomical 
 
 <img src="https://github.com/lext/DeepKnee/blob/master/pics/15_2_R_1_1_1_3_1_0_own.jpg" width="260"/> <img src="https://github.com/lext/DeepKnee/blob/master/pics/235_2_R_3_3_0_0_1_1_own.jpg" width="260"/>  <img src="https://github.com/lext/DeepKnee/blob/master/pics/77_2_R_2_0_0_0_0_1_own.jpg" width="260"/> 
 
-## Upcoming changes
+## TODO
 
 - [x] Codes for the main experiements (Supplementary information)
 - [ ] MOST and OAI cohorts bounding box annotations
-- [ ] Dataset generation scripts
+- [ ] Datasets generation scripts
 - [ ] More benchmarks with the pre-trained models (e.g. DenseNets and Deeper ResNets)
 - [ ] Better documentation
 
