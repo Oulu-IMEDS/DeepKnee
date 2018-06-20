@@ -44,3 +44,18 @@ Our model learns localized radiological findings as we imposed prior anatomical 
 ## License
 
 This code is freely available only for research purpuses.
+
+## How to cite
+
+```
+@article{tiulpin2018automatic,
+  title={Automatic Knee Osteoarthritis Diagnosis from Plain Radiographs: A Deep Learning-Based Approach},
+  author={Tiulpin, Aleksei and Thevenot, J{\'e}r{\^o}me and Rahtu, Esa and Lehenkari, Petri and Saarakkala, Simo},
+  journal={Scientific reports},
+  volume={8},
+  number={1},
+  pages={1727},
+  year={2018},
+  publisher={Nature Publishing Group}
+}
+```
