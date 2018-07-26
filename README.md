@@ -37,8 +37,8 @@ Our model learns localized radiological findings as we imposed prior anatomical 
 
 - [x] Codes for the main experiements (Supplementary information of the article)
 - [x] Pre-trained models
-- [ ] Datasets generation scripts
-- [ ] MOST and OAI cohorts bounding box annotations
+- [x] Datasets generation scripts
+- [x] MOST and OAI cohorts bounding box annotations
 
 
 ## License
