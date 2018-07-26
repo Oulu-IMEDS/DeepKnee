@@ -22,7 +22,6 @@ def read_dicom(filename):
     try:
         data = dicom.read_file(filename)
         img = np.frombuffer(data.PixelData,dtype=np.uint16).copy().astype(np.float64)
-
         if data.PhotometricInterpretation == 'MONOCHROME1':
             img = img.max()-img
         img = img.reshape((data.Rows,data.Columns))
@@ -37,7 +36,7 @@ def read_dicom(filename):
     except:
         return None
 
-def preprocess_xray(img, cut_min=5, cut_max=99, multiplier=255):
+def process_xray(img, cut_min=5, cut_max=99, multiplier=255):
     """
     This function changes the histogram of the image by doing global contrast normalization
     
@@ -70,7 +69,7 @@ def preprocess_xray(img, cut_min=5, cut_max=99, multiplier=255):
 
     return img
 
-def process_file(i, fname, dataset_dir, save_dir, bbox, gradeL, gradeR, pad=300):
+def process_file(i, fname, dataset_dir, save_dir, bbox, gradeL, gradeR, sizemm=140, pad=300):
     """
     Processes one knee xray and saves left and right images into 16bit png files.
     
@@ -90,6 +89,8 @@ def process_file(i, fname, dataset_dir, save_dir, bbox, gradeL, gradeR, pad=300)
         KL grade for the left joint.
     gradeR : int
         KL grade for the right joint.
+    sizemm : float
+        Size of the ROI in mm.
     pad : int
         Padding for the xray image. It is very useful in the case when the knee is too close to the edges.
         
@@ -139,10 +140,8 @@ def process_file(i, fname, dataset_dir, save_dir, bbox, gradeL, gradeR, pad=300)
         patch = np.round(patch)
         patch = patch.astype(np.uint16)
 
-        save_dir = os.path.join(dataset_dir, str(gradeL))
-        os.makedirs(save_dir, exist_ok=True)
-    
-        name_save = os.path.join(save_dir, f'{i}_{gradeL}_L.png')
+        os.makedirs(os.path.join(save_dir, str(gradeL)), exist_ok=True)
+        name_save = os.path.join(save_dir, str(gradeL), f'{i}_{gradeL}_L.png')
         cv2.imwrite(name_save, np.fliplr(patch))
 
     if rightok:
@@ -163,10 +162,8 @@ def process_file(i, fname, dataset_dir, save_dir, bbox, gradeL, gradeR, pad=300)
         patch = np.round(patch)
         patch = patch.astype(np.uint16)
 
-        save_dir = os.path.join(dataset_dir, str(gradeR))
-        os.makedirs(save_dir, exist_ok=True)
-        
-        name_save = os.path.join(save_dir, f'{i}_{gradeR}_R.png')
+        os.makedirs(os.path.join(save_dir, str(gradeR)), exist_ok=True)
+        name_save = os.path.join(save_dir, str(gradeR), f'{i}_{gradeR}_R.png')
         cv2.imwrite(name_save, patch)
         
     return False
