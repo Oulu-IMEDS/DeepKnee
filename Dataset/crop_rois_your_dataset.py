@@ -6,7 +6,7 @@ import argparse
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", default='../../DICOM_TEST/imgs/')
-    parser.add_argument("--save_dir", default='../../DICOM_TEST/imgs/')
+    parser.add_argument("--save_dir", default='../../DICOM_TEST/rois/')
     parser.add_argument("--detections", default='../../detection_results.txt')
     args = parser.parse_args()
 
