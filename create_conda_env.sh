@@ -11,3 +11,5 @@ source activate deep_knee
 pip install pip -U
 pip install pydicom
 pip install tqdm
+pip install pillow
+pip install torchvision

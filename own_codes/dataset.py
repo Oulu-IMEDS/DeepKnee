@@ -31,6 +31,7 @@ def get_pair(I):
     
     return l, m
 
+
 class KneeGradingDataset(data.Dataset):
     """
     Dataset class.
