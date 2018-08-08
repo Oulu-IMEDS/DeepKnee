@@ -69,6 +69,7 @@ def process_xray(img, cut_min=5, cut_max=99, multiplier=255):
 
     return img
 
+
 def process_file(i, fname, dataset_dir, save_dir, bbox, gradeL, gradeR, sizemm=140, pad=300):
     """
     Processes one knee xray and saves left and right images into 16bit png files.
@@ -141,7 +142,7 @@ def process_file(i, fname, dataset_dir, save_dir, bbox, gradeL, gradeR, sizemm=1
         patch = patch.astype(np.uint16)
 
         os.makedirs(os.path.join(save_dir, str(gradeL)), exist_ok=True)
-        name_save = os.path.join(save_dir, str(gradeL), f'{i}_{gradeL}_L.png')
+        name_save = os.path.join(save_dir, str(gradeL), f"{fname.split('.')[0]}_L.png")
         cv2.imwrite(name_save, np.fliplr(patch))
 
     if rightok:
@@ -163,9 +164,8 @@ def process_file(i, fname, dataset_dir, save_dir, bbox, gradeL, gradeR, sizemm=1
         patch = patch.astype(np.uint16)
 
         os.makedirs(os.path.join(save_dir, str(gradeR)), exist_ok=True)
-        name_save = os.path.join(save_dir, str(gradeR), f'{i}_{gradeR}_R.png')
+        name_save = os.path.join(save_dir, str(gradeR), f"{fname.split('.')[0]}_R.png")
         cv2.imwrite(name_save, patch)
-        
     return False
 
 
