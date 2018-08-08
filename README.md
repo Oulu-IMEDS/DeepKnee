@@ -11,20 +11,9 @@ Osteoarthritis (OA) is the 11th highest disability factor and it is associated w
 
 Here we present the training codes and the pretrained models from each of our experiments. Please, see the paper for more details.
 
-To train the networks, we used Ubuntu 14.04, CUDA 8.0 and CuDNN v.6. Below please find the other dependencies which need to be installed:
-
-* Python 3.6
-* pytorch < 0.4.0 with CUDA support
-* PIL
-* matplotlib
-* Jupyter Notebook (to work with attention maps)
-* tqdm
-* visdom
-* numpy
-* termcolor
-* torchvision
-
-We recommend to create a virtual environment with the aforementioned packages. To run the training, execute the corresponding bash files (validation is visualized in visdom). Before running, edit the begining of the file to activate your virtual environment.
+To train the networks, we used Ubuntu 14.04, CUDA 8.0 and CuDNN v.6. For convenience, we have implemented a conda environment.
+Simply install it using the script `create_conda_env.sh` and activate it as `source activate deep_knee`.
+ To run the training, execute the corresponding bash files (validation is visualized in visdom). 
 
 However, you can run the codes as they are, just use the parameters fixed in the bash scripts.
 
@@ -39,6 +28,8 @@ Our model learns localized radiological findings as we imposed prior anatomical 
 - [x] Pre-trained models
 - [x] Datasets generation scripts
 - [x] MOST and OAI cohorts bounding box annotations
+- [x] Conda environments
+- [x] Support of the inference on the external data.
 
 ## Inference for your own data
 To run the inference on your own DICOM data, do the following:
@@ -49,11 +40,12 @@ the file with bounding boxes, which determine the locations of the knees on the 
 2. Use the script `Dataset/crop_rois_your_dataset.py` to create the 16bit png files of left and right knees.
 Please note: the left knee will be flipped to match the right one. 
 The script needs to be executed within the created environment @ the stage 0.
-3. Use the script `inference_own/predict.py` to produce the file with gradings
+3. Run `git lfs install && git lfs pull` to fetch the pre-trained models.
+4. Use the script `inference_own/predict.py` to produce the file with gradings
 
 ## License
 
-This code is freely available only for research purpuses.
+This code is freely available only for research purposes.
 
 ## How to cite
 
