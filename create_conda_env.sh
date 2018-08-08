@@ -14,3 +14,4 @@ pip install pydicom
 pip install tqdm
 pip install pillow
 pip install torchvision
+pip install termcolor

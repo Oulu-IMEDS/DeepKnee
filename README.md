@@ -24,7 +24,7 @@ To train the networks, we used Ubuntu 14.04, CUDA 8.0 and CuDNN v.6. Below pleas
 * termcolor
 * torchvision
 
-We recommend to create a virtual environment with the aforemention packages. To run the training, execute the corresponding bash files (validation is visualized in visdom). Before running, edit the begining of the file to activate your virtual environment.
+We recommend to create a virtual environment with the aforementioned packages. To run the training, execute the corresponding bash files (validation is visualized in visdom). Before running, edit the begining of the file to activate your virtual environment.
 
 However, you can run the codes as they are, just use the parameters fixed in the bash scripts.
 
@@ -40,6 +40,15 @@ Our model learns localized radiological findings as we imposed prior anatomical 
 - [x] Datasets generation scripts
 - [x] MOST and OAI cohorts bounding box annotations
 
+## Inference for your own data
+To run the inference on your own DICOM data, do the following:
+0. Create a conda environment `deep_knee` using the script `create_conda_env.sh`.
+1. Fetch our repository [KneeLocalizer](https://github.com/MIPT-Oulu/KneeLocalizer) and get 
+the file with bounding boxes, which determine the locations of the knees on the image
+2. Use the script `Dataset/crop_rois_your_dataset.py` to create the 16bit png files of left and right knees.
+Please note: the left knee will be flipped to match the right one. 
+The script needs to be executed within the created environment @ the stage 0.
+3. Use the script `inference_own/predict.py` to produce the file with gradings
 
 ## License
 
