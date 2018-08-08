@@ -6,15 +6,30 @@ Inference script for a custom dataset
 """
 
 import sys
+sys.path.insert(0, '../own_codes/')
 import os
 import argparse
 import numpy as np
 import glob
 import torch
-
-sys.path.insert(0, '../own_codes/')
+from collections import OrderedDict
 from model import KneeNet
 from dataset import get_pair
+
+
+def load_model(filename, net):
+    state_dict = torch.load(filename, map_location=lambda storage, loc: storage)
+    try:
+        net.load_state_dict(state_dict)
+    except:
+
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            name = k[7:]  # remove `module.`
+            new_state_dict[name] = v
+        net.load_state_dict(new_state_dict)
+    return net
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -30,9 +45,6 @@ if __name__ == "__main__":
 
     models = []
     for snp_name in snapshots_fnames:
-        tmp = KneeNet(args.bw, 0.2, True)
-        weights = torch.load(snp_name, map_location=lambda storage, loc: storage)
-        tmp.load_state_dict(weights)
+        tmp = load_model(snp_name, KneeNet(args.bw, 0.2, True))
         tmp.eval()
         models.append(tmp)
-        
