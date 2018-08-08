@@ -18,8 +18,8 @@ from augmentation import CenterCrop
 from dataset import get_pair
 from PIL import Image
 from torchvision import transforms
-
-
+from torch.autograd import Variable
+from tqdm import tqdm
 def load_model(filename, net):
     state_dict = torch.load(filename, map_location=lambda storage, loc: storage)
     try:
@@ -51,9 +51,11 @@ def load_img(fname, img_proc, patch_proc):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset',  default='../../DICOM_TEST/rois')
+    parser.add_argument('--dataset',  default='../../DICOM_TEST/rois/5/')
+    parser.add_argument('--save_results', default='../../KL_grading_results.txt')
     parser.add_argument('--snapshots',  default='../snapshots_knee_grading')
     parser.add_argument('--bw', type=int, default=64)
+
     args = parser.parse_args()
 
     print('Version of pytorch:', torch.__version__)
@@ -75,6 +77,23 @@ if __name__ == "__main__":
         normTransform,
     ])
 
-    img_transform = CenterCrop(300)
+    imgs_fnames = glob.glob(os.path.join(args.dataset, '*'))
+    sm = torch.nn.Softmax(1)
+    preds = []
+    for fname in tqdm(imgs_fnames, total=len(imgs_fnames)):
+        inp = load_img(fname, CenterCrop(300), patch_transform)
 
+        lateral = Variable(inp[0].unsqueeze(0), volatile=True)
+        medial = Variable(inp[1].unsqueeze(0), volatile=True)
+        res = 0
+        for m in models:
+            res += m(lateral, medial)
+        res = sm(res).data.squeeze().numpy()
+
+        preds.append([fname.split('/')[-1], ] + res.tolist())
+
+    with open(args.save_results, 'w') as f:
+        for pred in preds:
+            f.write(f'{pred[0]} {pred[1]:.5f} {pred[2]:.5f} {pred[3]:.5f} {pred[4]:.5f} {pred[5]:.5f}')
+            f.write('\n')
 
