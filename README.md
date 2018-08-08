@@ -42,6 +42,7 @@ Our model learns localized radiological findings as we imposed prior anatomical 
 
 ## Inference for your own data
 To run the inference on your own DICOM data, do the following:
+
 0. Create a conda environment `deep_knee` using the script `create_conda_env.sh`.
 1. Fetch our repository [KneeLocalizer](https://github.com/MIPT-Oulu/KneeLocalizer) and get 
 the file with bounding boxes, which determine the locations of the knees on the image
