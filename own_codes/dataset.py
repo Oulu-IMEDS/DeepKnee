@@ -7,14 +7,10 @@ Dataset tools
 
 import torch.utils.data as data
 import torch
-import torch.nn.functional as F
-from torch.autograd import Variable
 import numpy as np
-import cv2
-from PIL import Image,ImageEnhance
+from PIL import Image
 import os
 
-import torchvision.transforms as transforms
 
 def get_pair(I):
     """
@@ -61,13 +57,11 @@ class KneeGradingDataset(data.Dataset):
 
         l = self.transform(l)
         m = self.transform(m)
-            
 
         return l, m, target, fname
 
     def __len__(self):
         return len(self.names)
-
 
 
 class LimitedRandomSampler(data.sampler.Sampler):

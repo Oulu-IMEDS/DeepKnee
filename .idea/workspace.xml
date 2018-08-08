@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="c98451e6-5f29-4c58-952e-8f28d7c081f7" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/create_conda_env.sh" beforeDir="false" afterPath="$PROJECT_DIR$/create_conda_env.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/inference_own/predict.py" beforeDir="false" afterPath="$PROJECT_DIR$/inference_own/predict.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/own_codes/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/own_codes/dataset.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -20,7 +20,7 @@
       <file leaf-file-name="predict.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/inference_own/predict.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="682">
+            <state relative-caret-position="555">
               <caret line="50" lean-forward="true" selection-start-line="50" selection-end-line="50" />
             </state>
           </provider>
@@ -29,8 +29,11 @@
       <file leaf-file-name="dataset.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/own_codes/dataset.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-503">
-              <caret selection-end-line="5" selection-end-column="3" />
+            <state relative-caret-position="250">
+              <caret line="53" selection-start-line="53" selection-end-line="58" selection-end-column="29" />
+              <folding>
+                <element signature="e#71#102#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -241,13 +244,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/own_codes/dataset.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-503">
-          <caret selection-end-line="5" selection-end-column="3" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/own_codes/train.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-3398">
@@ -255,9 +251,19 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/own_codes/dataset.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="250">
+          <caret line="53" selection-start-line="53" selection-end-line="58" selection-end-column="29" />
+          <folding>
+            <element signature="e#71#102#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/inference_own/predict.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="682">
+        <state relative-caret-position="555">
           <caret line="50" lean-forward="true" selection-start-line="50" selection-end-line="50" />
         </state>
       </provider>

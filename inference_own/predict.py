@@ -14,7 +14,10 @@ import glob
 import torch
 from collections import OrderedDict
 from model import KneeNet
+from augmentation import CenterCrop
 from dataset import get_pair
+from PIL import Image
+from torchvision import transforms
 
 
 def load_model(filename, net):
@@ -22,13 +25,28 @@ def load_model(filename, net):
     try:
         net.load_state_dict(state_dict)
     except:
-
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
             name = k[7:]  # remove `module.`
             new_state_dict[name] = v
         net.load_state_dict(new_state_dict)
     return net
+
+
+def load_img(fname, img_proc, patch_proc):
+    img = Image.open(fname)
+    # We will use 8bit
+    tmp = np.array(img, dtype=float)
+    img = Image.fromarray(np.uint8(255 * (tmp / 65535.)))
+
+    img = img_proc(img)
+
+    l, m = get_pair(img)
+
+    lateral_patch = patch_proc(l)
+    medial_patch = patch_proc(m)
+
+    return lateral_patch, medial_patch
 
 
 if __name__ == "__main__":
@@ -40,7 +58,7 @@ if __name__ == "__main__":
 
     print('Version of pytorch:', torch.__version__)
 
-    mean_std = np.load(os.path.join(args.snapshots, 'mean_std.npy'))
+    mean_vector, std_vector = np.load(os.path.join(args.snapshots, 'mean_std.npy'))
     snapshots_fnames = glob.glob(os.path.join(args.snapshots, '*', '*.pth'))
 
     models = []
@@ -48,3 +66,15 @@ if __name__ == "__main__":
         tmp = load_model(snp_name, KneeNet(args.bw, 0.2, True))
         tmp.eval()
         models.append(tmp)
+
+    normTransform = transforms.Normalize(mean_vector, std_vector)
+
+    patch_transform = transforms.Compose([
+        transforms.ToTensor(),
+        lambda x: x.float(),
+        normTransform,
+    ])
+
+    img_transform = CenterCrop(300)
+
+
