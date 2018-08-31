@@ -7,7 +7,6 @@ Main training script
 
 from __future__ import print_function
 
-
 from dataset import KneeGradingDataset, LimitedRandomSampler
 from train_utils import train_epoch, adjust_learning_rate
 from val_utils import validate_epoch
@@ -39,8 +38,8 @@ import pickle
 import time
 cudnn.benchmark = True
 
-
-from augmentation import CenterCrop, CorrectGamma, Jitter, Rotate, CorrectBrightness, CorrectContrast
+from augmentation import (CenterCrop, CorrectGamma, Jitter, Rotate,
+                          CorrectBrightness, CorrectContrast)
 
 
 if __name__ == '__main__':
@@ -165,12 +164,13 @@ if __name__ == '__main__':
                                 val_files.tolist(), 
                                 transform=patch_transform,
                                 augment=CenterCrop(300),
-                                stage='val')
+                                stage='val'
+                                )
 
     val_loader = data.DataLoader(val_ds,
                                  batch_size=args.val_bs,
-                                 num_workers=args.n_threads,
-                                )
+                                 num_workers=args.n_threads
+                                 )
 
     print(colored('==> ', 'blue')+'Initialized the loaders....')
 
@@ -213,13 +213,13 @@ if __name__ == '__main__':
                     ).tolist()
                 )
 
-
         train_files = np.array(train_files)
 
         train_ds = KneeGradingDataset(args.dataset, 
                                       train_files.tolist(), 
                                       transform=patch_transform,
-                                      augment=augment_transforms)
+                                      augment=augment_transforms
+                                      )
         N_batches = None
         if args.n_batches > 0:
             N_batches = args.n_batches
@@ -227,18 +227,14 @@ if __name__ == '__main__':
         if N_batches is not None:
             train_loader = data.DataLoader(train_ds, batch_size=args.bs,
                                            num_workers=args.n_threads,
-                                           sampler=LimitedRandomSampler(train_ds, N_batches, args.bs),
-                                          )
+                                           sampler=LimitedRandomSampler(train_ds, N_batches, args.bs)
+                                           )
         else:
             train_loader = data.DataLoader(train_ds,
                                            batch_size=args.bs,
                                            num_workers=args.n_threads,
                                            shuffle=True
-                                          )
-
-
-
-
+                                           )
 
         print(colored('==> ', 'blue')+'Epoch:', epoch+1, cur_snapshot)
         # Adjusting learning rate using the scheduler
@@ -276,7 +272,6 @@ if __name__ == '__main__':
             val_acc.append(acc)
             val_kappa.append(kappa)
 
-
         # Displaying the results in Visdom
         if epoch > args.start_val+1 and args.use_visdom:
             # Train/Val window
@@ -312,7 +307,6 @@ if __name__ == '__main__':
                     update='append'
                 )
 
-
         # Making logs backup
         np.save(os.path.join(args.snapshots, cur_snapshot, 'logs.npy'), 
                 [train_losses,val_losses, val_mse, val_acc, val_kappa])
@@ -336,4 +330,3 @@ if __name__ == '__main__':
 
 
 print(args.seed, 'Training took:', time.time()-train_started, 'seconds')
-

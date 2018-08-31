@@ -4,7 +4,6 @@ Validation utils
 (c) Aleksei Tiulpin, University of Oulu, 2017
 """
 
-
 import gc
 from tqdm import tqdm
 import torch.nn as nn
@@ -13,6 +12,7 @@ import numpy as np
 import cv2
 import torch
 import os
+
 
 def validate_epoch(net, val_loader, criterion):
 
@@ -42,8 +42,7 @@ def validate_epoch(net, val_loader, criterion):
         preds.append(probs)
         truth.append(targets.cpu().numpy())
         names_all.extend(names)
-        
-        
+
         running_loss += loss.data[0]
         bar.update(1)
         gc.collect()

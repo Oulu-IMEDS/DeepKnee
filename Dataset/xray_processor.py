@@ -3,6 +3,7 @@ import numpy as np
 import os
 import cv2
 
+
 def read_dicom(filename):
     """
     This function tries to read the dicom file
@@ -35,6 +36,7 @@ def read_dicom(filename):
         return img, data.PixelSpacing[0]
     except:
         return None
+
 
 def process_xray(img, cut_min=5, cut_max=99, multiplier=255):
     """
@@ -167,5 +169,3 @@ def process_file(i, fname, dataset_dir, save_dir, bbox, gradeL, gradeR, sizemm=1
         name_save = os.path.join(save_dir, str(gradeR), f"{fname.split('.')[0]}_R.png")
         cv2.imwrite(name_save, patch)
     return False
-
-

@@ -11,12 +11,13 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from collections import OrderedDict
 
+
 def ConvBlock3(inp, out, stride, pad):
     """
     3x3 ConvNet building block with different activations support.
     
     Aleksei Tiulpin, Unversity of Oulu, 2017 (c).
-    
+
     """
     return nn.Sequential(
         nn.Conv2d(inp, out, kernel_size=3, stride=stride, padding=pad),
@@ -49,8 +50,7 @@ class Branch(nn.Module):
         self.block2 = nn.Sequential(ConvBlock3(bw, bw*2, 1, 0),
                                     ConvBlock3(bw*2, bw*2, 1, 0),
                                     )
-        
-        
+
         self.block3 = ConvBlock3(bw*2, bw*4, 1, 0)
 
     def forward(self, x):
@@ -58,23 +58,25 @@ class Branch(nn.Module):
         o2 = F.max_pool2d(self.block2(o1),2)        
         return F.avg_pool2d(self.block3(o2),10).view(x.size(0), -1)
 
+
 def set_requires_grad(module, val):
     for p in module.parameters():
         p.requires_grad = val
+
 
 class KneeNet(nn.Module):
     """
     Siamese Net to automatically grade osteoarthritis 
     
     Aleksei Tiulpin, Unversity of Oulu, 2017 (c).
-    
+
     """
     def __init__(self, bw, drop, use_w_init=True):
         super().__init__()
         self.branch = Branch(bw)
 
         if drop > 0:
-            self.final = nn.Sequential(nn.Dropout(p=drop),nn.Linear(2*bw*4, 5))
+            self.final = nn.Sequential(nn.Dropout(p=drop), nn.Linear(2*bw*4, 5))
         else:
             self.final = nn.Linear(2*bw*4, 5)
         
@@ -89,6 +91,3 @@ class KneeNet(nn.Module):
         feats = torch.cat([o1, o2], 1)
         
         return self.final(feats)
-        
-        
-

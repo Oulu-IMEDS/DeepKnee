@@ -15,7 +15,6 @@ def adjust_learning_rate(optimizer, epoch, args):
     """
     Decreases the initial LR by 10 every drop_step epochs. 
     Conv layers learn slower if specified in the optimizer.
-
     """
     lr = args.lr * (0.1 ** (epoch // args.lr_drop))
     if lr < args.lr_min:
@@ -51,9 +50,8 @@ def train_epoch(epoch, net, optimizer, train_loader, criterion, max_ep):
         optimizer.step()
 
         running_loss += loss.data[0]
-        print('[%d | %d, %5d / %d] | Running loss: %.3f / loss %.3f' % (epoch + 1,max_ep, i + 1,
-                                                                                  n_batches, running_loss / (i+1),
-                                                                                  loss.data[0]))
+        print('[%d | %d, %5d / %d] | Running loss: %.3f / loss %.3f' %
+              (epoch + 1, max_ep, i + 1, n_batches, running_loss / (i+1), loss.data[0]))
         gc.collect()
     gc.collect()
 
