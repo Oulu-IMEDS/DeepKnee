@@ -6,7 +6,6 @@ Inference script for a custom dataset
 """
 
 import sys
-sys.path.insert(0, '../own_codes/')
 import os
 import argparse
 import numpy as np
@@ -20,6 +19,8 @@ from PIL import Image
 from torchvision import transforms
 from torch.autograd import Variable
 from tqdm import tqdm
+
+
 def load_model(filename, net):
     state_dict = torch.load(filename, map_location=lambda storage, loc: storage)
     try:
@@ -96,4 +97,3 @@ if __name__ == "__main__":
         for pred in preds:
             f.write(f'{pred[0]} {pred[1]:.5f} {pred[2]:.5f} {pred[3]:.5f} {pred[4]:.5f} {pred[5]:.5f}')
             f.write('\n')
-
