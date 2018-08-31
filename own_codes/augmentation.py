@@ -10,6 +10,7 @@ import torchvision.transforms as transforms
 import numbers
 import numpy as np
 
+
 class CenterCrop(object):
     """
     Performs center crop of an image of a certain size.
@@ -68,6 +69,7 @@ class CorrectGamma(object):
         self.g_min = g_min
         self.g_max = g_max
         self.res = res
+
     def __call__(self, img):
         gamma = random.random()*self.g_max+self.g_min
         if self.res == 8:
@@ -106,12 +108,9 @@ class Rotate(object):
         return img.rotate(angle,resample=self.interp)
 
 
-
-
-    
 class CorrectBrightness(object):
     """
-    Performs random brifghtness change
+    Performs random brightness change
     
     """
     def __init__(self, b_min, b_max):
@@ -122,9 +121,8 @@ class CorrectBrightness(object):
         enhancer = ImageEnhance.Brightness(img)
         factor = random.uniform(self.b_min, self.b_max)
         return enhancer.enhance(factor)
-    
-    
-    
+
+
 class CorrectContrast(object):
     """
     Performs random contrast change
@@ -138,5 +136,3 @@ class CorrectContrast(object):
         enhancer = ImageEnhance.Contrast(img)
         factor = random.uniform(self.b_min, self.b_max)
         return enhancer.enhance(factor)
-
-
