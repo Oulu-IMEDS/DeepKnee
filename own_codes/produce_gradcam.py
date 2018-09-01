@@ -211,14 +211,10 @@ if __name__ == '__main__':
     nets = []
 
     for fold in config.snapshots:
-        for snp_name in os.listdir(os.path.join(config.path_folds, fold)):
-            if snp_name.endswith('pth'):
-                break
-        print(snp_name, int(snp_name.split('_')[1][:-4]) * 500)
-        snap_path = os.path.join(config.path_folds, fold, snp_name)
-        net = nn.DataParallel(KneeNet(64, 0.2, True)).to(maybe_cuda)
-        net.load_state_dict(torch.load(snap_path, map_location=maybe_cuda))
-        nets.append(deepcopy(net.module))
+        for snap_path in glob(os.path.join(config.path_folds, fold, '*.pth')):
+            net = nn.DataParallel(KneeNet(64, 0.2, True)).to(maybe_cuda)
+            net.load_state_dict(torch.load(snap_path, map_location=maybe_cuda))
+            nets.append(deepcopy(net.module))
 
     net = nn.DataParallel(KneeNetEnsemble(nets))
     net.to(maybe_cuda)

@@ -78,7 +78,7 @@ if __name__ == "__main__":
         normTransform,
     ])
 
-    imgs_fnames = glob.glob(os.path.join(args.dataset, '*'))
+    imgs_fnames = glob.glob(os.path.join(args.dataset, '**', '*.png'))
     sm = torch.nn.Softmax(1)
     preds = []
     for fname in tqdm(imgs_fnames, total=len(imgs_fnames)):
