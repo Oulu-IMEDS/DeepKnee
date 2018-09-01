@@ -1,30 +1,21 @@
 import os
-import itertools
 import argparse
 from copy import deepcopy
+from glob import glob
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
+from sklearn.preprocessing import OneHotEncoder
 
 import cv2
-import torch.utils.data as data
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
-from torch.autograd import Variable
 
-from dataset import KneeGradingDataset
 from model import KneeNet
-from augmentation import CenterCrop
-from val_utils import validate_epoch
 
-# from sklearn.metrics import (confusion_matrix, mean_squared_error,
-#                              cohen_kappa_score, roc_auc_score,
-#                              roc_curve, log_loss)
-from sklearn.preprocessing import OneHotEncoder
 from dataset import get_pair
 from augmentation import CenterCrop
 
@@ -205,7 +196,7 @@ def parse_args():
 if __name__ == '__main__':
     config = parse_args()
 
-    print('Implemented and tested on pytorch==0.4.0')
+    print('WARNING: Implemented and tested on pytorch==0.4.0 only')
 
     mean_vector, std_vector = np.load('../snapshots_knee_grading/mean_std.npy')
     normTransform = transforms.Normalize(mean_vector, std_vector)
@@ -215,67 +206,49 @@ if __name__ == '__main__':
         normTransform,
     ])
 
-    test_files = os.listdir(config.path_input)
-
-    # val_ds = KneeGradingDataset('../../KL_data/',
-    #                             test_files,
-    #                             transform=patch_transform,
-    #                             augment=CenterCrop(300),
-    #                             stage='test')
-    #
-    # val_loader = data.DataLoader(val_ds, batch_size=64, num_workers=10)
-
     avg_preds = {}
     labels = {}
     nets = []
 
     for fold in config.snapshots:
-
         for snp_name in os.listdir(os.path.join(config.path_folds, fold)):
             if snp_name.endswith('pth'):
                 break
-
         print(snp_name, int(snp_name.split('_')[1][:-4]) * 500)
         snap_path = os.path.join(config.path_folds, fold, snp_name)
-        net = nn.DataParallel(KneeNet(64, 0.2, True))
-        net.load_state_dict(torch.load(snap_path))
+        net = nn.DataParallel(KneeNet(64, 0.2, True)).to(maybe_cuda)
+        net.load_state_dict(torch.load(snap_path, map_location=maybe_cuda))
         nets.append(deepcopy(net.module))
-
-
-
 
     net = nn.DataParallel(KneeNetEnsemble(nets))
     net.to(maybe_cuda)
-    # val_loss, probs, truth, names = validate_epoch(net, val_loader, F.cross_entropy)
-
-
 
     # Producing the GradCAM output using the equations provided in the article
+    paths_test_files = glob(os.path.join(config.path_input, '**', '*.png'))
+
     if not os.path.exists(config.path_output):
         os.makedirs(config.path_output)
 
-    for fname in test_files:
-        img, l, m = load_picture16bit('../../KL_data/test/' + fname)
+    for path_test_file in paths_test_files:
+        img, l, m = load_picture16bit(path_test_file)
+
         net.train(True)
         net.zero_grad()
-        out = net.module(torch.from_numpy(l.to(maybe_cuda)),
-                         torch.from_numpy(m.to(maybe_cuda)))
+        out = net.module(l.to(maybe_cuda), m.to(maybe_cuda))
         ohe = OneHotEncoder(sparse=False, n_values=5)
         index = np.argmax(out.cpu().data.numpy(), axis=1).reshape(-1, 1)
         out.backward(torch.from_numpy(ohe.fit_transform(index)).float().to(maybe_cuda))
 
         heatmap = net.module.compute_gradcam(
-            torch.from_numpy(l.to(maybe_cuda)),
-            torch.from_numpy(m.to(maybe_cuda)),
-            300, 128, 7)
+            l.to(maybe_cuda), m.to(maybe_cuda), 300, 128, 7)
 
         plt.figure(figsize=(7, 7))
-        plt.imshow(np.array(img), cmap=plt.cm.Greys_r)
+        plt.imshow(np.asarray(img), cmap=plt.cm.Greys_r)
         plt.imshow(heatmap, cmap=plt.cm.jet, alpha=0.3)
         plt.xticks([])
         plt.yticks([])
         tmp_fname = os.path.join(config.path_output,
-                                 'heatmap_' + fname)
+                                 'heatmap_' + os.path.basename(path_test_file))
         plt.savefig(tmp_fname, bbox_inches='tight', dpi=300, pad_inches=0)
         plt.close()
 
@@ -288,6 +261,6 @@ if __name__ == '__main__':
         plt.ylim(0, 1)
         plt.yticks([])
         tmp_fname = os.path.join(config.path_output,
-                                 'prob_' + fname)
+                                 'prob_' + os.path.basename(path_test_file))
         plt.savefig(tmp_fname, bbox_inches='tight', dpi=300, pad_inches=0)
         plt.close()
