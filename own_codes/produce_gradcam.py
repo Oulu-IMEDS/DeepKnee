@@ -12,6 +12,7 @@ import cv2
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 import torchvision.transforms as transforms
 
 from model import KneeNet
@@ -107,14 +108,16 @@ class KneeNetEnsemble(nn.Module):
 
     def extract_features_branch(self, net, l, m, wl, wm):
         def weigh_maps(weights, maps):
-            maps = maps.squeeze()
+            maps = Variable(maps.squeeze())
             weights = weights.squeeze()
 
-            res = torch.zeros(maps.size()[-2:]).to(maybe_cuda)
+            if torch.cuda.is_available():
+                res = torch.zeros(maps.size()[-2:]).cuda()
+            else:
+                res = Variable(torch.zeros(maps.size()[-2:]))
 
             for i, w in enumerate(weights):
                 res += w * maps[i]
-
             return res
 
         # We need to re-assemble the architecture
@@ -142,16 +145,13 @@ class KneeNetEnsemble(nn.Module):
         ol3, om3 = self.extract_features_branch(self.net1, l, m, wl, wm)
 
         l_out = (ol1 + ol2 + ol3) / 3.
-
         m_out = (om1 + om2 + om3) / 3.
 
         heatmap = inverse_pair_mapping(l_out.data.cpu().numpy(),
                                        np.fliplr(m_out.data.cpu().numpy()),
                                        img_size, ps, smoothing)
-
         heatmap -= heatmap.min()
         heatmap /= heatmap.max()
-
         return heatmap
 
     def forward(self, l, m):
@@ -196,8 +196,6 @@ def parse_args():
 if __name__ == '__main__':
     config = parse_args()
 
-    print('WARNING: Implemented and tested on pytorch==0.4.0 only')
-
     mean_vector, std_vector = np.load('../snapshots_knee_grading/mean_std.npy')
     normTransform = transforms.Normalize(mean_vector, std_vector)
     patch_transform = transforms.Compose([
@@ -212,12 +210,18 @@ if __name__ == '__main__':
 
     for fold in config.snapshots:
         for snap_path in glob(os.path.join(config.path_folds, fold, '*.pth')):
-            net = nn.DataParallel(KneeNet(64, 0.2, True)).to(maybe_cuda)
+
+            if torch.cuda.is_available():
+                net = nn.DataParallel(KneeNet(64, 0.2, True)).cuda()
+            else:
+                net = nn.DataParallel(KneeNet(64, 0.2, True))
+
             net.load_state_dict(torch.load(snap_path, map_location=maybe_cuda))
             nets.append(deepcopy(net.module))
 
     net = nn.DataParallel(KneeNetEnsemble(nets))
-    net.to(maybe_cuda)
+    if torch.cuda.is_available():
+        net.cuda()
 
     # Producing the GradCAM output using the equations provided in the article
     paths_test_files = glob(os.path.join(config.path_input, '**', '*.png'))
@@ -230,13 +234,26 @@ if __name__ == '__main__':
 
         net.train(True)
         net.zero_grad()
-        out = net.module(l.to(maybe_cuda), m.to(maybe_cuda))
+
+        if torch.cuda.is_available():
+            out = net.module(Variable(l.cuda()), Variable(m.cuda()))
+        else:
+            out = net.module(Variable(l), Variable(m))
+
         ohe = OneHotEncoder(sparse=False, n_values=5)
         index = np.argmax(out.cpu().data.numpy(), axis=1).reshape(-1, 1)
-        out.backward(torch.from_numpy(ohe.fit_transform(index)).float().to(maybe_cuda))
 
-        heatmap = net.module.compute_gradcam(
-            l.to(maybe_cuda), m.to(maybe_cuda), 300, 128, 7)
+        if torch.cuda.is_available():
+            out.backward(torch.from_numpy(ohe.fit_transform(index)).float().cuda())
+        else:
+            out.backward(torch.from_numpy(ohe.fit_transform(index)).float())
+
+        if torch.cuda.is_available():
+            heatmap = net.module.compute_gradcam(
+                Variable(l.cuda()), Variable(m.cuda()), 300, 128, 7)
+        else:
+            heatmap = net.module.compute_gradcam(
+                Variable(l), Variable(m), 300, 128, 7)
 
         plt.figure(figsize=(7, 7))
         plt.imshow(np.asarray(img), cmap=plt.cm.Greys_r)
