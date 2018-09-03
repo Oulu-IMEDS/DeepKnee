@@ -8,8 +8,6 @@ Aleksei Tiulpin, Unversity of Oulu, 2017 (c).
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
-from collections import OrderedDict
 
 
 def ConvBlock3(inp, out, stride, pad):
