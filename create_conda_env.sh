@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 conda create -y -n deep_knee python=3.6
 source activate deep_knee
