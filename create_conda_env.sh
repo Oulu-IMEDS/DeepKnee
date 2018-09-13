@@ -3,9 +3,9 @@
 conda create -y -n deep_knee python=3.6
 source activate deep_knee
 
-conda install -y numpy opencv scipy pyyaml cython matplotlib scikit-learn
-conda install -y pytorch==0.3.1 torchvision -c soumith
-conda install -y git-lfs -c conda-forge
+conda install -y -n deep_knee numpy opencv scipy pyyaml cython matplotlib scikit-learn
+conda install -y -n deep_knee pytorch==0.3.1 torchvision -c soumith
+conda install -y -n deep_knee git-lfs -c conda-forge
 
 pip install pip -U
 pip install pydicom
