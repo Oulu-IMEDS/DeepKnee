@@ -5,7 +5,6 @@ Inference script for a custom dataset
 (c) Aleksei Tiulpin, University of Oulu, 2017
 """
 
-import sys
 import os
 import argparse
 import numpy as np
