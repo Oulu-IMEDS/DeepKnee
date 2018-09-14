@@ -2,7 +2,7 @@
 
 
 # Activating the environment
-source /media/lext/FAST/pytorch_3_6_env/bin/activate
+#source /media/lext/FAST/pytorch_3_6_env/bin/activate
 
 # Training parameters
 export DROPOUT=0.2
