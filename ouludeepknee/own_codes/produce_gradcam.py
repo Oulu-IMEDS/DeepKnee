@@ -139,6 +139,10 @@ class KneeNetEnsemble(nn.Module):
         else:
             raise TypeError
 
+        width, height = img.size
+
+        if width != 310 or height != 310:
+            img = img.resize((310, 310), Image.BICUBIC)
         cropper = CenterCrop(300)
 
         l, m = get_pair(cropper(img))
@@ -315,6 +319,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--path_folds', default=SNAPSHOTS_KNEE_GRADING)
     parser.add_argument('--path_input')
+    parser.add_argument('--nbits', type=int, default=16)
     parser.add_argument('--path_output', default='../')
 
     args = parser.parse_args()
@@ -336,9 +341,8 @@ if __name__ == '__main__':
 
     paths_test_files = glob(os.path.join(config.path_input, '*', '*.png'))
 
-    if not os.path.exists(config.path_output):
-        os.makedirs(config.path_output)
+    os.makedirs(config.path_output, exist_ok=True)
 
     for path_test_file in tqdm(paths_test_files, total=len(paths_test_files)):
-        net.predict_save(fileobj_in=path_test_file, nbits=16,
+        net.predict_save(fileobj_in=path_test_file, nbits=config.nbits,
                          path_dir_out=config.path_output)

@@ -60,7 +60,7 @@ the file with the bounding boxes, which determine the locations of the knees in 
     **NOTE:** the image of the left knee will be horizontally flipped to match the right one.
 4. Produce the file with KL gradings of the extracted knee images:
     ```
-    $ cd own_codes
+    $ cd ouludeepknee/own_codes
     $ python inference_own/predict.py --help
     $ python inference_own/predict.py {parameters}
     $ cd ..
