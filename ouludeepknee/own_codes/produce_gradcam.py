@@ -116,7 +116,7 @@ class KneeNetEnsemble(nn.Module):
         self.grads_l3 = []
         self.grads_m3 = []
 
-    def load_picture(self, fname, nbits=16):
+    def load_picture(self, fname, nbits=16, flip_left=False):
         """
 
         :param fname: str or numpy.ndarray
@@ -141,8 +141,13 @@ class KneeNetEnsemble(nn.Module):
 
         width, height = img.size
 
-        if width != 310 or height != 310:
-            img = img.resize((310, 310), Image.BICUBIC)
+        if width != 350 or height != 350:
+            img = img.resize((350, 350), Image.BICUBIC)
+
+        if flip_left:
+            if '_L' in fname.split('/')[0]:
+                img = img.transpose(Image.FLIP_LEFT_RIGHT)
+
         cropper = CenterCrop(300)
 
         l, m = get_pair(cropper(img))
@@ -236,7 +241,7 @@ class KneeNetEnsemble(nn.Module):
 
         return o1 + o2 + o3
 
-    def predict(self, x, nbits=16):
+    def predict(self, x, nbits=16, flip_left=False):
         """Makes a prediction from file or a pre-loaded image
 
         :param x: str or numpy.array
@@ -246,7 +251,7 @@ class KneeNetEnsemble(nn.Module):
             Image, Heatmap, probabilities
         """
         self.init_networks_from_states()
-        img, l, m = self.load_picture(x, nbits=nbits)
+        img, l, m = self.load_picture(x, nbits=nbits, flip_left=flip_left)
         self.train(True)
         self.zero_grad()
 
@@ -275,7 +280,7 @@ class KneeNetEnsemble(nn.Module):
         return img, heatmap, probs.squeeze()
 
     def predict_save(self, fileobj_in, nbits=16, fname_suffix=None, path_dir_out='./',
-                     fliplr=False):
+                     flip_left=False):
         if fname_suffix is not None:
             pass
         elif isinstance(fileobj_in, str):
@@ -283,8 +288,8 @@ class KneeNetEnsemble(nn.Module):
         else:
             fname_suffix = ''
 
-        img, heatmap, probs = self.predict(x=fileobj_in, nbits=nbits)
-        if fliplr:
+        img, heatmap, probs = self.predict(x=fileobj_in, nbits=nbits, flip_left=flip_left)
+        if flip_left:
             img = np.fliplr(img)
             heatmap = np.fliplr(heatmap)
 
@@ -307,6 +312,7 @@ class KneeNetEnsemble(nn.Module):
         tmp_fname = os.path.join(path_dir_out, f'prob_{fname_suffix}.png')
         plt.savefig(tmp_fname, bbox_inches='tight', dpi=300, pad_inches=0)
         plt.close()
+        return probs.squeeze().argmax()
 
 
 SNAPSHOTS_KNEE_GRADING = os.path.abspath(os.path.join(
@@ -320,7 +326,9 @@ def parse_args():
     parser.add_argument('--path_folds', default=SNAPSHOTS_KNEE_GRADING)
     parser.add_argument('--path_input')
     parser.add_argument('--nbits', type=int, default=16)
+    parser.add_argument('--flip_left', type=bool, default=False)
     parser.add_argument('--path_output', default='../')
+    parser.add_argument('--path_output_csv', default='../preds.csv')
 
     args = parser.parse_args()
     return args
@@ -343,6 +351,12 @@ if __name__ == '__main__':
 
     os.makedirs(config.path_output, exist_ok=True)
 
-    for path_test_file in tqdm(paths_test_files, total=len(paths_test_files)):
-        net.predict_save(fileobj_in=path_test_file, nbits=config.nbits,
-                         path_dir_out=config.path_output)
+    with open(config.path_output_csv, 'w') as f:
+        f.write('IMG,predicted\n')
+        for path_test_file in tqdm(paths_test_files, total=len(paths_test_files)):
+            pred = net.predict_save(fileobj_in=path_test_file, nbits=config.nbits,
+                                    path_dir_out=config.path_output, flip_left=config.flip_left)
+            line = '{},{}\n'.format(path_test_file.split('/')[-1], pred)
+            f.write(line)
+
+
