@@ -12,7 +12,6 @@ import cv2
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 import torchvision.transforms as transforms
 from tqdm import tqdm
 
@@ -25,6 +24,11 @@ if torch.cuda.is_available():
     maybe_cuda = 'cuda'
 else:
     maybe_cuda = 'cpu'
+
+SNAPSHOTS_KNEE_GRADING = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '../snapshots_knee_grading'))
+
+SNAPSHOTS_EXPS = ['2017_10_10_12_30_42', '2017_10_10_12_30_46', '2017_10_10_12_30_49']
 
 
 def smooth_edge_mask(s, w):
@@ -74,7 +78,7 @@ class KneeNetEnsemble(nn.Module):
         self.mean_std_path = mean_std_path
 
         if torch.cuda.is_available():
-            self.cuda()
+            self.to('cuda')
 
     def init_networks_from_states(self):
         mean_vector, std_vector = np.load(self.mean_std_path)
@@ -88,7 +92,7 @@ class KneeNetEnsemble(nn.Module):
         nets = []
         for state in self.states:
             if torch.cuda.is_available():
-                net = nn.DataParallel(KneeNet(64, 0.2, True)).cuda()
+                net = nn.DataParallel(KneeNet(64, 0.2, True)).to('cuda')
             else:
                 net = nn.DataParallel(KneeNet(64, 0.2, True))
             net.load_state_dict(state)
@@ -159,34 +163,38 @@ class KneeNetEnsemble(nn.Module):
 
     @staticmethod
     def decompose_forward_avg(net, l, m):
-        l_o = net.branch(l)
-        m_o = net.branch(m)
+        with torch.no_grad():
+            l_o = net.branch(l)
+            m_o = net.branch(m)
+
+        l_o.requres_grad = True
+        m_o.requres_grad = True
 
         concat = torch.cat([l_o, m_o], 1)
         o = net.final(concat.view(l.size(0), net.final.in_features))
         return l_o, m_o, o
 
     @staticmethod
-    def extract_features_branch(net, l, m, wl, wm):
+    def extract_features_branch(model, l, m, wl, wm):
         def weigh_maps(weights, maps):
-            maps = Variable(maps.squeeze())
+            maps = maps.squeeze()
             weights = weights.squeeze()
 
             if torch.cuda.is_available():
-                res = torch.zeros(maps.size()[-2:]).cuda()
+                res = torch.zeros(maps.size()[-2:]).to('cuda')
             else:
-                res = Variable(torch.zeros(maps.size()[-2:]))
+                res = torch.zeros(maps.size()[-2:])
 
             for i, w in enumerate(weights):
                 res += w * maps[i]
             return res
 
         # We need to re-assemble the architecture
-        branch = nn.Sequential(net.branch.block1,
+        branch = nn.Sequential(model.branch.block1,
                                nn.MaxPool2d(2),
-                               net.branch.block2,
+                               model.branch.block2,
                                nn.MaxPool2d(2),
-                               net.branch.block3)
+                               model.branch.block3)
 
         o_l = branch(l).data
         o_m = branch(m).data
@@ -256,9 +264,9 @@ class KneeNetEnsemble(nn.Module):
         self.zero_grad()
 
         if torch.cuda.is_available():
-            out = self.forward(Variable(l.cuda()), Variable(m.cuda()))
+            out = self.forward(l.to('cuda'), m.to('cuda'))
         else:
-            out = self.forward(Variable(l), Variable(m))
+            out = self.forward(l, m)
 
         probs = self.sm(out).data.cpu().numpy()
 
@@ -266,21 +274,18 @@ class KneeNetEnsemble(nn.Module):
         index = np.argmax(out.cpu().data.numpy(), axis=1).reshape(-1, 1)
 
         if torch.cuda.is_available():
-            out.backward(torch.from_numpy(ohe.fit_transform(index)).float().cuda())
+            out.backward(torch.from_numpy(ohe.fit_transform(index)).float().to('cuda'))
         else:
             out.backward(torch.from_numpy(ohe.fit_transform(index)).float())
 
         if torch.cuda.is_available():
-            heatmap = self.compute_gradcam(
-                Variable(l.cuda()), Variable(m.cuda()), 300, 128, 7)
+            heatmap = self.compute_gradcam(l.to('cuda'), m.to('cuda'), 300, 128, 7)
         else:
-            heatmap = self.compute_gradcam(
-                Variable(l), Variable(m), 300, 128, 7)
+            heatmap = self.compute_gradcam(l, m, 300, 128, 7)
 
         return img, heatmap, probs.squeeze()
 
-    def predict_save(self, fileobj_in, nbits=16, fname_suffix=None, path_dir_out='./',
-                     flip_left=False):
+    def predict_save(self, fileobj_in, nbits=16, fname_suffix=None, path_dir_out='./', flip_left=False):
         if fname_suffix is not None:
             pass
         elif isinstance(fileobj_in, str):
@@ -313,12 +318,6 @@ class KneeNetEnsemble(nn.Module):
         plt.savefig(tmp_fname, bbox_inches='tight', dpi=300, pad_inches=0)
         plt.close()
         return probs.squeeze().argmax()
-
-
-SNAPSHOTS_KNEE_GRADING = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), '../snapshots_knee_grading'))
-
-SNAPSHOTS_EXPS = ['2017_10_10_12_30_42', '2017_10_10_12_30_46', '2017_10_10_12_30_49']
 
 
 def parse_args():

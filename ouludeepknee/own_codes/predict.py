@@ -21,7 +21,7 @@ from ouludeepknee.own_codes.augmentation import CenterCrop
 from ouludeepknee.own_codes.dataset import get_pair
 
 
-def load_model(filename, net):
+def load_model(filename, net:torch.nn.Module):
     state_dict = torch.load(filename, map_location=lambda storage, loc: storage)
     try:
         net.load_state_dict(state_dict)
@@ -88,8 +88,8 @@ if __name__ == "__main__":
     for fname in tqdm(imgs_fnames, total=len(imgs_fnames)):
         inp = load_img(fname, CenterCrop(300), patch_transform)
 
-        lateral = Variable(inp[0].unsqueeze(0), volatile=True)
-        medial = Variable(inp[1].unsqueeze(0), volatile=True)
+        lateral = inp[0].unsqueeze(0)
+        medial = inp[1].unsqueeze(0)
         res = 0
         for m in models:
             res += m(lateral, medial)
