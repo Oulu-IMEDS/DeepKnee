@@ -23,6 +23,7 @@ def ConvBlock3(inp, out, stride, pad):
         nn.ReLU(inplace=True)
     )
 
+
 def weights_init_uniform(m):
     """
     Initializes the weights using kaiming method.
@@ -31,7 +32,7 @@ def weights_init_uniform(m):
     if isinstance(m, nn.Conv2d):
         nn.init.kaiming_uniform(m.weight.data)
         m.bias.data.fill_(0)
-        
+
     if isinstance(m, nn.Linear):
         nn.init.kaiming_uniform(m.weight.data)
         m.bias.data.fill_(0)
@@ -41,20 +42,20 @@ class Branch(nn.Module):
     def __init__(self, bw):
         super().__init__()
         self.block1 = nn.Sequential(ConvBlock3(1, bw, 2, 0),
-                                     ConvBlock3(bw, bw, 1, 0),
-                                     ConvBlock3(bw, bw, 1, 0),
-                                    )
-        
-        self.block2 = nn.Sequential(ConvBlock3(bw, bw*2, 1, 0),
-                                    ConvBlock3(bw*2, bw*2, 1, 0),
+                                    ConvBlock3(bw, bw, 1, 0),
+                                    ConvBlock3(bw, bw, 1, 0),
                                     )
 
-        self.block3 = ConvBlock3(bw*2, bw*4, 1, 0)
+        self.block2 = nn.Sequential(ConvBlock3(bw, bw * 2, 1, 0),
+                                    ConvBlock3(bw * 2, bw * 2, 1, 0),
+                                    )
+
+        self.block3 = ConvBlock3(bw * 2, bw * 4, 1, 0)
 
     def forward(self, x):
-        o1 = F.max_pool2d(self.block1(x),2)
-        o2 = F.max_pool2d(self.block2(o1),2)        
-        return F.avg_pool2d(self.block3(o2),10).view(x.size(0), -1)
+        o1 = F.max_pool2d(self.block1(x), 2)
+        o2 = F.max_pool2d(self.block2(o1), 2)
+        return F.avg_pool2d(self.block3(o2), 10).view(x.size(0), -1)
 
 
 def set_requires_grad(module, val):
@@ -69,23 +70,24 @@ class KneeNet(nn.Module):
     Aleksei Tiulpin, Unversity of Oulu, 2017 (c).
 
     """
+
     def __init__(self, bw, drop, use_w_init=True):
         super().__init__()
         self.branch = Branch(bw)
 
         if drop > 0:
-            self.final = nn.Sequential(nn.Dropout(p=drop), nn.Linear(2*bw*4, 5))
+            self.final = nn.Sequential(nn.Dropout(p=drop), nn.Linear(2 * bw * 4, 5))
         else:
-            self.final = nn.Linear(2*bw*4, 5)
-        
+            self.final = nn.Linear(2 * bw * 4, 5)
+
         # Custom weights initialization
         if use_w_init:
             self.apply(weights_init_uniform)
-    
+
     def forward(self, x1, x2):
         # Shared weights
         o1 = self.branch(x1)
         o2 = self.branch(x2)
         feats = torch.cat([o1, o2], 1)
-        
+
         return self.final(feats)

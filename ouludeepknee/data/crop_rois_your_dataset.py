@@ -1,9 +1,16 @@
+"""
+This script crops DICOM images. We use a simple format:
+M2320_HNSH/V0/14608/PA15/146082 2744 918 3944 2118 600 844 1800 2044
+{filename} {bbox_left} {bbox_right}.
+
+Bbox coords are stored as x1, y1, x2, y2.
+
+"""
 import os
 import numpy as np
 import argparse
 
-from ouludeepknee.dataset.xray_processor import process_file_or_image
-
+from ouludeepknee.data.utils import process_file_or_image
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

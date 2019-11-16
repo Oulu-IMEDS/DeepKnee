@@ -15,9 +15,9 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 from tqdm import tqdm
 
-from ouludeepknee.own_codes.model import KneeNet
-from ouludeepknee.own_codes.dataset import get_pair
-from ouludeepknee.own_codes.augmentation import CenterCrop
+from ouludeepknee.train.model import KneeNet
+from ouludeepknee.train.dataset import get_pair
+from ouludeepknee.train.augmentation import CenterCrop
 
 
 if torch.cuda.is_available():

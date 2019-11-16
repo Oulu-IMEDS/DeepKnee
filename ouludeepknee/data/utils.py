@@ -1,14 +1,14 @@
 import os
 
-import pydicom as dicom
-import numpy as np
 import cv2
+import numpy as np
+import pydicom as dicom
 
 
 def read_dicom(filename):
     """
     This function tries to read the dicom file
-    
+
     Parameters
     ----------
     filename : str
@@ -17,7 +17,7 @@ def read_dicom(filename):
     Returns
     -------
     tuple or None
-        Returns a tuple, which as an image and a pixel spacing. 
+        Returns a tuple, which as an image and a pixel spacing.
         None is returned if the function was not able to read the file / extract spacing.
     """
 
@@ -42,7 +42,7 @@ def read_dicom(filename):
 def process_xray(img, cut_min=5, cut_max=99, multiplier=255):
     """
     This function changes the histogram of the image by doing global contrast normalization
-    
+
     Parameters
     ----------
     img : array_like
@@ -53,12 +53,12 @@ def process_xray(img, cut_min=5, cut_max=99, multiplier=255):
         Highest percentile trim
     multiplier : int
         Multiplier to apply after global contrast normalization
-        
+
     Returns
     -------
     array_like
         Returns a processed image
-    
+
     """
 
     img = img.copy()
@@ -79,7 +79,7 @@ def process_file_or_image(fname=None, dataset_dir=None,
                           sizemm=140, pad=300, save_vis=True):
     """
     Processes one knee xray and saves left and right images into 16bit png files.
-    
+
     Parameters
     ----------
     fname : str
@@ -102,12 +102,12 @@ def process_file_or_image(fname=None, dataset_dir=None,
         Size of the ROI in mm.
     pad : int
         Padding for the xray image. It is very useful in the case when the knee is too close to the edges.
-        
+
     Returns
     -------
     bool
         Returns bool if failure. Saves left and/or right knee joints into given folders.
-        
+
     """
     if (fname is not None) and (dataset_dir is not None):
         res_read = read_dicom(os.path.join(dataset_dir, fname))
@@ -134,7 +134,7 @@ def process_file_or_image(fname=None, dataset_dir=None,
     image_padded = np.zeros((image.shape[0] + 2*pad,
                              image.shape[1] + 2*pad))
     image_padded[pad:pad+image.shape[0], pad:pad+image.shape[1]] = image
-    
+
     # This can be refactored
     if leftok:
         x1, y1, x2, y2 = [c + pad for c in bbox[:4]]

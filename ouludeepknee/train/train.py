@@ -7,18 +7,19 @@ Main training script
 
 from __future__ import print_function
 
-from tqdm import tqdm
 import argparse
 import os
-import time
-import pickle
 import gc
+import pickle
+import time
 
 from termcolor import colored
 
+from tqdm import tqdm
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.transforms as transforms
 import torch.utils.data as data
@@ -26,26 +27,27 @@ import torch.backends.cudnn as cudnn
 from sklearn.metrics import confusion_matrix, mean_squared_error, cohen_kappa_score
 
 from visdom import Visdom
+
 cudnn.benchmark = True
 
-from ouludeepknee.antony_codes.dataset import KneeGradingDataset, LimitedRandomSampler
-from ouludeepknee.antony_codes.train_utils import train_epoch, adjust_learning_rate
-from ouludeepknee.antony_codes.val_utils import validate_epoch
-from ouludeepknee.antony_codes.model import AntonyNet2Heads
-from ouludeepknee.antony_codes.loss import CombinedLoss
-from ouludeepknee.antony_codes.augmentation import (CenterCrop, CorrectGamma, Jitter, Rotate,
-                                                    CorrectBrightness, CorrectContrast)
+from ouludeepknee.train.dataset import KneeGradingDataset, LimitedRandomSampler
+from ouludeepknee.train.train_utils import train_epoch, adjust_learning_rate
+from ouludeepknee.train.val_utils import validate_epoch
+from ouludeepknee.train.model import KneeNet
+from ouludeepknee.train.augmentation import (CenterCrop, CorrectGamma, Jitter,
+                                             Rotate, CorrectBrightness, CorrectContrast)
 
 
-SNAPSHOTS_KNEE_GRADING_ANTONY = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), '../snapshots_knee_grading_antony'))
+SNAPSHOTS_KNEE_GRADING = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '../snapshots_knee_grading'))
 
 
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset',  default='../../KL_data')
-    parser.add_argument('--snapshots',  default=SNAPSHOTS_KNEE_GRADING_ANTONY)
-    parser.add_argument('--experiment',  default='Antony_net')
+    parser.add_argument('--data',  default='../../KL_data')
+    parser.add_argument('--snapshots',  default=SNAPSHOTS_KNEE_GRADING)
+    parser.add_argument('--experiment',  default='own_net')
     parser.add_argument('--patch_size', type=int, default=130)
     parser.add_argument('--base_width', type=int, default=32)
     parser.add_argument('--start_val', type=int, default=-1)
@@ -75,7 +77,7 @@ if __name__ == '__main__':
     os.mkdir(os.path.join(args.snapshots, cur_snapshot))
     with open(os.path.join(args.snapshots, cur_snapshot, 'args.pkl'), 'wb') as f:
         pickle.dump(args, f)
-   
+
     # Getting the name of the train and validation datasets
     # We oversample the train set
     train_cats_length = []
@@ -84,7 +86,7 @@ if __name__ == '__main__':
             os.path.join(args.dataset, 'train', str(kl))
         )))
 
-    oversample_size = int(np.mean(train_cats_length))
+    oversample_size = int(sum(train_cats_length) / 5)
     train_files = []
     print(oversample_size)
     np.random.seed(args.seed)
@@ -102,20 +104,20 @@ if __name__ == '__main__':
     np.random.shuffle(train_files)
     val_files = np.array(os.listdir(os.path.join(args.dataset,'val')))
     
-    crop_tensor_transform = transforms.Compose([
-            CenterCrop((300, 200)),
-            transforms.ToTensor(),
-            lambda x: x.float(),
-        ])
-        
     if os.path.isfile(os.path.join(args.snapshots, 'mean_std.npy')):
         tmp = np.load(os.path.join(args.snapshots, 'mean_std.npy'))
         mean_vector, std_vector = tmp
     else:
         
+        transf_tens= transforms.Compose([
+            transforms.ToTensor(),
+            lambda x: x.float()
+        ])
+        
         train_ds = KneeGradingDataset(args.dataset, 
                                       train_files.tolist(), 
-                                      transform=crop_tensor_transform,
+                                      transform=transf_tens,
+                                      augment=CenterCrop(300),
                                       stage='train')
         
         train_loader = data.DataLoader(train_ds, batch_size=args.bs, num_workers=args.n_threads)
@@ -126,10 +128,11 @@ if __name__ == '__main__':
         print(colored('==> ', 'green')+'Estimating the mean')
         pbar = tqdm(total=len(train_loader))
         for entry in train_loader:
-            batch = entry[0]
+            batch_l = entry[0]
+            batch_m = entry[0]
             for j in range(mean_vector.shape[0]):
-                mean_vector[j] += batch[:, j, :, :].mean()
-                std_vector[j] += batch[:, j, :, :].std()
+                mean_vector[j] += (batch_l[:, j, :, :].mean()+batch_l[:, j, :, :].mean())/2.
+                std_vector[j] += (batch_l[:, j, :, :].std()+batch_m[:, j, :, :].std())/2.
             pbar.update()
         mean_vector /= len(train_loader)
         std_vector /= len(train_loader)
@@ -141,44 +144,46 @@ if __name__ == '__main__':
     # Defining the transforms
     # This is the transformation for each patch
     normTransform = transforms.Normalize(mean_vector, std_vector)
-    crop_tensor_transform = transforms.Compose([
-            CenterCrop((300, 200)),
+    patch_transform = transforms.Compose([
             transforms.ToTensor(),
             lambda x: x.float(),
-            normTransform
+            normTransform,
         ])
+
     # This we will use to globally augment the image
     augment_transforms = transforms.Compose([
         CorrectBrightness(0.7,1.3),
         CorrectContrast(0.7,1.3),
         Rotate(-15,15),
         CorrectGamma(0.5,2.5),
-        Jitter(300, 6,20),
-        crop_tensor_transform
+        Jitter(300, 6,20),       
     ])
 
     # Validation set
     val_ds = KneeGradingDataset(args.dataset, 
                                 val_files.tolist(), 
-                                transform=crop_tensor_transform,
-                                stage='val')
+                                transform=patch_transform,
+                                augment=CenterCrop(300),
+                                stage='val'
+                                )
 
     val_loader = data.DataLoader(val_ds,
                                  batch_size=args.val_bs,
-                                 num_workers=args.n_threads,
-                                )
+                                 num_workers=args.n_threads
+                                 )
 
     print(colored('==> ', 'blue')+'Initialized the loaders....')
 
     # Network
-    net = nn.DataParallel(AntonyNet2Heads())
+    net = nn.DataParallel(KneeNet(args.base_width, args.drop, True))
     net.cuda()
     # Optimizer
-    optimizer = optim.SGD(net.parameters(), lr=args.lr, 
-                          weight_decay=args.wd,momentum=0.9, 
-                          nesterov=True)
+    optimizer = optim.Adam(net.parameters(), lr=args.lr, weight_decay=args.wd)
+
+    #optimizer = optim.SGD(filter(lambda p: p.requires_grad, net.parameters()),
+    #                   lr=args.lr, weight_decay=args.wd, momentum=0.9)
     # Criterion
-    criterion = CombinedLoss(0.5)
+    criterion = F.cross_entropy
     # Visualizer-realted variables
     vis = Visdom()
     win = None
@@ -196,7 +201,7 @@ if __name__ == '__main__':
     train_started = time.time()
     for epoch in range(args.n_epoch):
 
-        # On each iteration we oversample the dataset to have everything correspond the torch implementation
+        # On each iteration we oversample the data to have everything correspond the torch implementation
         # This will be needed to oversample different KL-0 on each epoch
         train_files = []
         np.random.seed(args.seed)
@@ -212,7 +217,9 @@ if __name__ == '__main__':
 
         train_ds = KneeGradingDataset(args.dataset, 
                                       train_files.tolist(), 
-                                      transform=augment_transforms)
+                                      transform=patch_transform,
+                                      augment=augment_transforms
+                                      )
         N_batches = None
         if args.n_batches > 0:
             N_batches = args.n_batches
@@ -220,14 +227,14 @@ if __name__ == '__main__':
         if N_batches is not None:
             train_loader = data.DataLoader(train_ds, batch_size=args.bs,
                                            num_workers=args.n_threads,
-                                           sampler=LimitedRandomSampler(train_ds, N_batches, args.bs),
-                                          )
+                                           sampler=LimitedRandomSampler(train_ds, N_batches, args.bs)
+                                           )
         else:
             train_loader = data.DataLoader(train_ds,
                                            batch_size=args.bs,
                                            num_workers=args.n_threads,
                                            shuffle=True
-                                          )
+                                           )
 
         print(colored('==> ', 'blue')+'Epoch:', epoch+1, cur_snapshot)
         # Adjusting learning rate using the scheduler

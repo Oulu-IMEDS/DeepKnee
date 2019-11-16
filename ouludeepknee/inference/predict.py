@@ -1,5 +1,5 @@
 """
-Inference script for a custom dataset
+Inference script for a custom data
 
 (c) Aleksei Tiulpin, University of Oulu, 2017
 """
@@ -13,12 +13,11 @@ import numpy as np
 from PIL import Image
 import torch
 from torchvision import transforms
-from torch.autograd import Variable
 from tqdm import tqdm
 
-from ouludeepknee.own_codes.model import KneeNet
-from ouludeepknee.own_codes.augmentation import CenterCrop
-from ouludeepknee.own_codes.dataset import get_pair
+from ouludeepknee.train.model import KneeNet
+from ouludeepknee.train.augmentation import CenterCrop
+from ouludeepknee.train.dataset import get_pair
 
 
 def load_model(filename, net:torch.nn.Module):
@@ -56,7 +55,7 @@ SNAPSHOTS_KNEE_GRADING = os.path.abspath(os.path.join(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset',  default='../../DICOM_TEST/rois/5/')
+    parser.add_argument('--data',  default='../../DICOM_TEST/rois/5/')
     parser.add_argument('--save_results', default='../../KL_grading_results.txt')
     parser.add_argument('--snapshots',  default=SNAPSHOTS_KNEE_GRADING)
     parser.add_argument('--bw', type=int, default=64)
