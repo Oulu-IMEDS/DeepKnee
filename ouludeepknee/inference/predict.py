@@ -19,6 +19,8 @@ from ouludeepknee.train.model import KneeNet
 from ouludeepknee.train.augmentation import CenterCrop
 from ouludeepknee.train.dataset import get_pair
 
+SNAPSHOTS_KNEE_GRADING = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../snapshots_knee_grading'))
+
 
 def load_model(filename, net:torch.nn.Module):
     state_dict = torch.load(filename, map_location=lambda storage, loc: storage)
@@ -47,10 +49,6 @@ def load_img(fname, img_proc, patch_proc):
     medial_patch = patch_proc(m)
 
     return lateral_patch, medial_patch
-
-
-SNAPSHOTS_KNEE_GRADING = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), '../snapshots_knee_grading'))
 
 
 if __name__ == "__main__":
