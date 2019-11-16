@@ -45,14 +45,14 @@ if __name__ == '__main__':
         logger = logging.getLogger(f'kneel-backend:{logger_level}')
         logger.setLevel(logging.DEBUG)
 
-        loggers[f'kneel-backend:{logger_level}'] = logger
+        loggers[f'deepknee-backend:{logger_level}'] = logger
 
     # TODO: Create an inference model
 
     if args.deploy:
         http_server = WSGIServer(('', 5000), app, log=logger)
-        loggers['kneel-backend:app'].log(logging.INFO, 'Production server is running')
+        loggers['deepknee-backend:app'].log(logging.INFO, 'Production server is running')
         http_server.serve_forever()
     else:
-        loggers['kneel-backend:app'].log(logging.INFO, 'Debug server is running')
+        loggers['deepknee-backend:app'].log(logging.INFO, 'Debug server is running')
         app.run(host='', port=5000, debug=True)
