@@ -1,7 +1,7 @@
 import os
 import argparse
 from copy import deepcopy
-from glob import glob
+import glob
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,12 +19,6 @@ from ouludeepknee.train.model import KneeNet
 from ouludeepknee.train.dataset import get_pair
 from ouludeepknee.train.augmentation import CenterCrop
 from ouludeepknee.inference.utils import fuse_bn_recursively
-
-
-SNAPSHOTS_KNEE_GRADING = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), '../../snapshots_knee_grading'))
-
-SNAPSHOTS_EXPS = ['2017_10_10_12_30_42', '2017_10_10_12_30_46', '2017_10_10_12_30_49']
 
 
 def smooth_edge_mask(s, w):
@@ -301,7 +295,7 @@ class KneeNetEnsemble(nn.Module):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--snapshots_path', default=SNAPSHOTS_KNEE_GRADING)
+    parser.add_argument('--snapshots_path', default='../../snapshots_knee_grading')
     parser.add_argument('--images', type=str, default='')
     parser.add_argument('--with_heatmaps', type=bool, default=False)
     parser.add_argument('--nbits', type=int, default=16)
@@ -321,16 +315,14 @@ if __name__ == '__main__':
 
     avg_preds = {}
     labels = {}
-    nets_snapshots_names = []
 
-    for snp in SNAPSHOTS_EXPS:
-        nets_snapshots_names.extend(glob(os.path.join(args.snapshots_path, snp, '*.pth')))
+    nets_snapshots_names = glob.glob(os.path.join(args.snapshots_path, "*", '*.pth'))
 
     net = KneeNetEnsemble(nets_snapshots_names,
                           mean_std_path=os.path.join(args.snapshots_path, 'mean_std.npy'),
                           device=args.device)
 
-    paths_test_files = glob(os.path.join(args.images, '*.png'))
+    paths_test_files = glob.glob(os.path.join(args.images, '*.png'))
 
     os.makedirs(args.output_dir, exist_ok=True)
 
