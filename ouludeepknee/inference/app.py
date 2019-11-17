@@ -21,7 +21,7 @@ def analyze_knee():
 
 
 @app.route('/predict/single', methods=['POST'])
-def analyze_knee():
+def analyze_single_knee():
     """
     Runs prediction for a single cropped right knee X-ray.
 
@@ -36,15 +36,14 @@ if __name__ == '__main__':
     parser.add_argument('--device',  default='cuda')
     parser.add_argument('--mean_std_path', default='')
     parser.add_argument('--deploy', type=bool, default=False)
+    parser.add_argument('--logs', type=str, default='/tmp/deepknee.log')
     args = parser.parse_args()
 
     loggers = {}
-
+    logging.basicConfig(filename=args.logs, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     for logger_level in ['app', 'pipeline', 'single-knee', 'bilateral-knee']:
-        logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        logger = logging.getLogger(f'kneel-backend:{logger_level}')
+        logger = logging.getLogger(logger_level)
         logger.setLevel(logging.DEBUG)
-
         loggers[f'deepknee-backend:{logger_level}'] = logger
 
     # TODO: Create an inference model
