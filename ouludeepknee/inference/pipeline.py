@@ -4,6 +4,10 @@ import io
 import os
 from copy import deepcopy
 
+import matplotlib
+
+matplotlib.use('Agg')
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,6 +18,11 @@ import torchvision.transforms as transforms
 from PIL import Image
 from sklearn.preprocessing import OneHotEncoder
 from tqdm import tqdm
+import requests
+from pydicom import dcmread
+from pydicom.filebase import DicomBytesIO
+
+from ouludeepknee.data.utils import read_dicom, process_xray
 
 from ouludeepknee.inference.utils import fuse_bn_recursively
 from ouludeepknee.train.augmentation import CenterCrop
@@ -141,8 +150,7 @@ class KneeNetEnsemble(nn.Module):
             img = img.resize((350, 350), Image.BICUBIC)
 
         if flip_left:
-            if '_L' in fname.split('/')[0]:
-                img = img.transpose(Image.FLIP_LEFT_RIGHT)
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
 
         img_cropped = self.cropper(img)
         lateral, medial = get_pair(img_cropped)
@@ -297,7 +305,6 @@ class KneeNetEnsemble(nn.Module):
         if path_dir_out is not None:
             tmp_fname = os.path.join(path_dir_out, f'heatmap_{fname_suffix}.png')
             cv2.imwrite(tmp_fname, img_overlayed)
-        img_overlayed = cv2.cvtColor(img_overlayed, cv2.COLOR_BGR2RGB)
 
         # Making a bar plot for displaying probabilities
         plt.figure(figsize=(6, 1))
@@ -319,9 +326,60 @@ class KneeNetEnsemble(nn.Module):
         if path_dir_out is not None:
             tmp_fname = os.path.join(path_dir_out, f'prob_{fname_suffix}.png')
             cv2.imwrite(tmp_fname, probs_bar)
-        probs_bar = cv2.cvtColor(probs_bar, cv2.COLOR_BGR2RGB)
 
         return img, img_overlayed, probs_bar, probs.squeeze().argmax()
+
+    @staticmethod
+    def localize_bilateral(dicom_raw, sizemm, pad):
+        files = {'dicom': dicom_raw}
+
+        response = requests.post(f'{os.environ["KNEEL_ADDR"]}/predict/bilateral', files=files)
+        landmarks = response.json()
+        if landmarks['R'] is None:
+            return None
+
+        raw = DicomBytesIO(dicom_raw)
+        dicom_data = dcmread(raw)
+        img, spacing, dicom_data = read_dicom(dicom_data)
+        img = process_xray(img, 5, 99, 255).astype(np.uint8)
+        sizepx = int(np.round(sizemm / spacing))
+
+        row, col = img.shape
+        tmp = np.zeros((row + 2 * pad, col + 2 * pad))
+        tmp[pad:pad + row, pad:pad + col] = img
+        img = tmp
+
+        landmarks_l = np.array(landmarks['L']) + pad
+        landmarks_r = np.array(landmarks['R']) + pad
+        # Extracting center landmarks
+        lcx, lcy = landmarks_l[4]
+        rcx, rcy = landmarks_r[4]
+
+        img_left = img[(lcy - sizepx // 2):(lcy + sizepx // 2),
+                   (lcx - sizepx // 2):(lcx + sizepx // 2)].astype(np.uint8)
+
+        img_right = img[(rcy - sizepx // 2):(rcy + sizepx // 2),
+                    (rcx - sizepx // 2):(rcx + sizepx // 2)].astype(np.uint8)
+
+        return img_left, img_right
+
+    def predict_draw_bilateral(self, dicom_raw, sizemm, pad):
+        res_landmarks = KneeNetEnsemble.localize_bilateral(dicom_raw, sizemm, pad)
+        if res_landmarks is None:
+            return None
+
+        img_left, img_right = res_landmarks
+
+        img_l, img_hm_l, preds_bar_l, pred_l = self.predict_draw(fileobj_in=img_left,
+                                                                 nbits=8,
+                                                                 path_dir_out=None,
+                                                                 flip_left=True)
+
+        img_r, img_hm_r, preds_bar_r, pred_r = self.predict_draw(fileobj_in=img_right,
+                                                                 nbits=8,
+                                                                 path_dir_out=None,
+                                                                 flip_left=False)
+        return img_l, img_hm_l, preds_bar_l, pred_l, img_r, img_hm_r, preds_bar_r, pred_r
 
 
 def parse_args():
@@ -344,12 +402,7 @@ if __name__ == '__main__':
 
     args = parse_args()
 
-    avg_preds = {}
-    labels = {}
-
-    nets_snapshots_names = glob.glob(os.path.join(args.snapshots_path, "*", '*.pth'))
-
-    net = KneeNetEnsemble(nets_snapshots_names,
+    net = KneeNetEnsemble(glob.glob(os.path.join(args.snapshots_path, "*", '*.pth')),
                           mean_std_path=os.path.join(args.snapshots_path, 'mean_std.npy'),
                           device=args.device)
 
@@ -358,11 +411,15 @@ if __name__ == '__main__':
     os.makedirs(args.output_dir, exist_ok=True)
 
     with open(args.output_csv, 'w') as f:
-        f.write('IMG,predicted\n')
+        f.write('IMG,KL_R,KL_L\n')
         for path_test_file in tqdm(paths_test_files, total=len(paths_test_files)):
-            image, image_heatmap, preds_bar, pred = net.predict_draw(fileobj_in=path_test_file, nbits=args.nbits,
-                                                                     path_dir_out=args.output_dir if args.write_heatmaps else None,
-                                                                     flip_left=args.flip_left)
+            with open(path_test_file, 'rb') as fdicom:
+                dicom_raw_local = fdicom.read()
 
-            line = '{},{}\n'.format(path_test_file.split('/')[-1], pred)
+            res_bilateral = net.predict_draw_bilateral(dicom_raw_local, 140, 300)
+            if res_bilateral is None:
+                print('Could not localize the landmarks!')
+            img_l, img_hm_l, preds_bar_l, pred_l, img_r, img_hm_r, preds_bar_r, pred_r = res_bilateral
+
+            line = '{},{},{}\n'.format(path_test_file.split('/')[-1], pred_r, pred_l)
             f.write(line)

@@ -1,23 +1,53 @@
 """
-    This micro-service takes a dicom image in and returns JSON with localized landmark coordinates.
+    This micro-service takes a DICOM (bilateral X-ray) or PNG image (single knee, localized)
+    and makes KL grade predictions with GradCAM.
+
     (c) Aleksei Tiulpin, University of Oulu, 2019
 """
 import argparse
-from flask import jsonify
-from flask import Flask, request
-from gevent.pywsgi import WSGIServer
-from pydicom import dcmread
-from pydicom.filebase import DicomBytesIO
-import logging
+import base64
+import glob
+import os
 
+import cv2
+from flask import Flask, request
+from flask import jsonify, make_response
+from gevent.pywsgi import WSGIServer
+
+from ouludeepknee.inference.pipeline import KneeNetEnsemble
 
 app = Flask(__name__)
 
 
-# curl -F dicom=@01 -X POST http://127.0.0.1:5000/predict/bilateral
+def numpy2base64(img):
+    _, buffer = cv2.imencode('.png', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+    return 'data:image/png;base64,' + base64.b64encode(buffer).decode('ascii')
+
+
+# curl -F dicom=@01 -X POST http://127.0.0.1:5001/predict/bilateral
 @app.route('/predict/bilateral', methods=['POST'])
 def analyze_knee():
-    raise NotImplementedError
+    if os.environ['KNEEL_ADDR'] == '':
+        return make_response(jsonify({'msg': 'KNEEL microservice is not defined'}), 500)
+    dicom_raw = request.files['dicom'].read()
+    # Localization of ROIs and their conversion into 8-bit 140x140mm images
+    res_bilateral = net.predict_draw_bilateral(dicom_raw, args.sizemm, args.pad)
+    if res_bilateral is None:
+        return make_response(jsonify({'msg': 'Could not localize the landmarks'}), 400)
+
+    img_l, img_hm_l, preds_bar_l, pred_l, img_r, img_hm_r, preds_bar_r, pred_r = res_bilateral
+
+    response = {'L': {'img': numpy2base64(img_l),
+                      'hm': numpy2base64(img_hm_l),
+                      'preds_bar': numpy2base64(preds_bar_l),
+                      'kl': str(pred_l)},
+                'R': {'img': numpy2base64(img_r),
+                      'hm': numpy2base64(img_hm_r),
+                      'preds_bar': numpy2base64(preds_bar_r),
+                      'kl': str(pred_r)},
+                'msg': 'Finished!'}
+
+    return make_response(response, 200)
 
 
 @app.route('/predict/single', methods=['POST'])
@@ -31,27 +61,20 @@ def analyze_single_knee():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--snapshots', default='')
+    parser.add_argument('--snapshots_path', default='')
+    parser.add_argument('--device', default='cuda')
+    parser.add_argument('--sizemm', type=int, default=140)
     parser.add_argument('--pad', type=int, default=300)
-    parser.add_argument('--device',  default='cuda')
-    parser.add_argument('--mean_std_path', default='')
     parser.add_argument('--deploy', type=bool, default=False)
     parser.add_argument('--logs', type=str, default='/tmp/deepknee.log')
     args = parser.parse_args()
 
-    loggers = {}
-    logging.basicConfig(filename=args.logs, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    for logger_level in ['app', 'pipeline', 'single-knee', 'bilateral-knee']:
-        logger = logging.getLogger(logger_level)
-        logger.setLevel(logging.DEBUG)
-        loggers[f'deepknee-backend:{logger_level}'] = logger
-
-    # TODO: Create an inference model
+    net = KneeNetEnsemble(glob.glob(os.path.join(args.snapshots_path, "*", '*.pth')),
+                          mean_std_path=os.path.join(args.snapshots_path, 'mean_std.npy'),
+                          device=args.device)
 
     if args.deploy:
-        http_server = WSGIServer(('', 5000), app, log=logger)
-        loggers['deepknee-backend:app'].log(logging.INFO, 'Production server is running')
+        http_server = WSGIServer(('', 5001), app)
         http_server.serve_forever()
     else:
-        loggers['deepknee-backend:app'].log(logging.INFO, 'Debug server is running')
-        app.run(host='', port=5000, debug=True)
+        app.run(host='', port=5001, debug=True)
