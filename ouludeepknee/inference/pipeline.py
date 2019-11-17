@@ -1,24 +1,24 @@
-import os
 import argparse
-from copy import deepcopy
 import glob
-
-import matplotlib.pyplot as plt
-import numpy as np
-from PIL import Image
-from sklearn.preprocessing import OneHotEncoder
+import io
+import os
+from copy import deepcopy
 
 import cv2
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
+from PIL import Image
+from sklearn.preprocessing import OneHotEncoder
 from tqdm import tqdm
 
-from ouludeepknee.train.model import KneeNet
-from ouludeepknee.train.dataset import get_pair
-from ouludeepknee.train.augmentation import CenterCrop
 from ouludeepknee.inference.utils import fuse_bn_recursively
+from ouludeepknee.train.augmentation import CenterCrop
+from ouludeepknee.train.dataset import get_pair
+from ouludeepknee.train.model import KneeNet
 
 
 def smooth_edge_mask(s, w):
@@ -107,7 +107,7 @@ class KneeNetEnsemble(nn.Module):
                                    model.branch.block3)
             branch = fuse_bn_recursively(branch)
             model.branch = branch
-            models[f'net{idx+1}'] = deepcopy(model)
+            models[f'net{idx + 1}'] = deepcopy(model)
 
         self.__dict__['_modules'].update(models)
         self.to(self.device)
@@ -258,7 +258,7 @@ class KneeNetEnsemble(nn.Module):
 
         return img, gradcam_heatmap, probs.squeeze()
 
-    def predict_save(self, fileobj_in, nbits=16, fname_suffix=None, path_dir_out='./', flip_left=False):
+    def predict_draw(self, fileobj_in, nbits=16, fname_suffix=None, path_dir_out='./', flip_left=False):
         if fname_suffix is not None:
             pass
         elif isinstance(fileobj_in, str):
@@ -267,37 +267,50 @@ class KneeNetEnsemble(nn.Module):
             fname_suffix = ''
 
         img, heatmap, probs = self.predict(x=fileobj_in, nbits=nbits, flip_left=flip_left)
+        img = np.asarray(img)
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         if flip_left:
             img = np.fliplr(img)
             heatmap = np.fliplr(heatmap)
+        # overlay with original image
+        heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+        img_overlayed = cv2.addWeighted(img, 0.7, heatmap, 0.3, 0)
+        # If path provided, we save the heatmap. Otherwise, this is skipped
+        if path_dir_out is not None:
+            tmp_fname = os.path.join(path_dir_out, f'heatmap_{fname_suffix}.png')
+            cv2.imwrite(tmp_fname, img_overlayed)
+        img_overlayed = cv2.cvtColor(img_overlayed, cv2.COLOR_BGR2RGB)
 
-        plt.figure(figsize=(7, 7))
-        plt.imshow(np.asarray(img), cmap=plt.cm.Greys_r)
-        plt.imshow(heatmap, cmap=plt.cm.jet, alpha=0.3)
-        plt.xticks([])
-        plt.yticks([])
-        tmp_fname = os.path.join(path_dir_out, f'heatmap_{fname_suffix}.png')
-        plt.savefig(tmp_fname, bbox_inches='tight', dpi=300, pad_inches=0)
-        plt.close()
-
-        plt.figure(figsize=(7, 1))
+        # Making a bar plot for displaying probabilities
+        plt.figure(figsize=(6, 1))
         for kl in range(5):
             plt.text(kl - 0.2, 0.35, "%.2f" % np.round(probs[kl], 2), fontsize=15)
         plt.bar(np.array([0, 1, 2, 3, 4]), probs, color='red', align='center',
                 tick_label=['KL0', 'KL1', 'KL2', 'KL3', 'KL4'], alpha=0.3)
         plt.ylim(0, 1)
         plt.yticks([])
-        tmp_fname = os.path.join(path_dir_out, f'prob_{fname_suffix}.png')
-        plt.savefig(tmp_fname, bbox_inches='tight', dpi=300, pad_inches=0)
+        # Saving the figure to a BytesIO object.
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png", bbox_inches='tight', dpi=100, pad_inches=0)
+        buf.seek(0)
+        probs_bar_arr = np.frombuffer(buf.getvalue(), dtype=np.uint8)
+        buf.close()
         plt.close()
-        return probs.squeeze().argmax()
+        # Now decoding the result from the bytes object
+        probs_bar = cv2.imdecode(probs_bar_arr, 1)
+        if path_dir_out is not None:
+            tmp_fname = os.path.join(path_dir_out, f'prob_{fname_suffix}.png')
+            cv2.imwrite(tmp_fname, probs_bar)
+        probs_bar = cv2.cvtColor(probs_bar, cv2.COLOR_BGR2RGB)
+
+        return img, img_overlayed, probs_bar, probs.squeeze().argmax()
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--snapshots_path', default='../../snapshots_knee_grading')
     parser.add_argument('--images', type=str, default='')
-    parser.add_argument('--with_heatmaps', type=bool, default=False)
+    parser.add_argument('--write_heatmaps', type=bool, default=False)
     parser.add_argument('--nbits', type=int, default=16)
     parser.add_argument('--device', type=str, default='cpu')
     parser.add_argument('--flip_left', type=bool, default=False)
@@ -329,17 +342,13 @@ if __name__ == '__main__':
     with open(args.output_csv, 'w') as f:
         f.write('IMG,predicted\n')
         for path_test_file in tqdm(paths_test_files, total=len(paths_test_files)):
-            if args.with_heatmaps:
-                pred = net.predict_save(fileobj_in=path_test_file, nbits=args.nbits,
-                                         path_dir_out=args.output_dir, flip_left=args.flip_left)
-            else:
-                img, heatmap, probs = net.predict(x=path_test_file, nbits=args.nbits, flip_left=args.flip_left)
-                pred = probs.squeeze().argmax()
+            img, img_overlayed, probs_bar, pred = net.predict_draw(fileobj_in=path_test_file, nbits=args.nbits,
+                                                                   path_dir_out=args.output_dir if args.write_heatmaps else None,
+                                                                   flip_left=args.flip_left)
+
             if args.flip_left:
                 img = np.fliplr(img)
                 heatmap = np.fliplr(heatmap)
 
             line = '{},{}\n'.format(path_test_file.split('/')[-1], pred)
             f.write(line)
-
-
