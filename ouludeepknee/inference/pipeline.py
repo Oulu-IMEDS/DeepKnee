@@ -239,8 +239,11 @@ class KneeNetEnsemble(nn.Module):
         """Makes a prediction from file or a pre-loaded image
 
         :param x: str or numpy.array
+            Image. Should be 130x130mm with the pixel spacing of 0.3mm (300x300 pixels).
         :param nbits: int
             By default we load 16 bit images produced by CropROI Object and convert them to 8bit.
+        :param flip_left: bool
+            Whether to flip image. Done for the left knees
         :return: tuple
             Image, Heatmap, probabilities
         """
@@ -258,7 +261,22 @@ class KneeNetEnsemble(nn.Module):
 
         return img, gradcam_heatmap, probs.squeeze()
 
-    def predict_draw(self, fileobj_in, nbits=16, fname_suffix=None, path_dir_out='./', flip_left=False):
+    def predict_draw(self, fileobj_in, nbits=16, fname_suffix=None, path_dir_out=None, flip_left=False):
+        """Makes a prediction from file or a pre-loaded image
+
+        :param fileobj_in: str or numpy.array
+            Image. Should be 130x130mm with the pixel spacing of 0.3mm (300x300 pixels).
+        :param nbits: int
+            By default we load 16 bit images produced by CropROI Object and convert them to 8bit.
+        :param fname_suffix: str or None
+            Base filename used to save the results
+        :param path_dir_out: str or None
+            Where to save the heatmap and the softmax barplot
+        :param flip_left: bool
+            Whether to flip image. Done for the left knees
+        :return: tuple
+            Image, Heatmap, probabilities
+        """
         if fname_suffix is not None:
             pass
         elif isinstance(fileobj_in, str):
@@ -342,13 +360,9 @@ if __name__ == '__main__':
     with open(args.output_csv, 'w') as f:
         f.write('IMG,predicted\n')
         for path_test_file in tqdm(paths_test_files, total=len(paths_test_files)):
-            img, img_overlayed, probs_bar, pred = net.predict_draw(fileobj_in=path_test_file, nbits=args.nbits,
-                                                                   path_dir_out=args.output_dir if args.write_heatmaps else None,
-                                                                   flip_left=args.flip_left)
-
-            if args.flip_left:
-                img = np.fliplr(img)
-                heatmap = np.fliplr(heatmap)
+            image, image_heatmap, preds_bar, pred = net.predict_draw(fileobj_in=path_test_file, nbits=args.nbits,
+                                                                     path_dir_out=args.output_dir if args.write_heatmaps else None,
+                                                                     flip_left=args.flip_left)
 
             line = '{},{}\n'.format(path_test_file.split('/')[-1], pred)
             f.write(line)
