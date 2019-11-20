@@ -7,6 +7,8 @@ __pycache__/
 # C extensions
 *.so
 .idea/*
+./snapshots_knee_grading/*
+./snapshots_release_kneel/*
 # Distribution / packaging
 .Python
 env/

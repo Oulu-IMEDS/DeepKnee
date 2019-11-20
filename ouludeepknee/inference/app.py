@@ -62,6 +62,7 @@ def analyze_single_knee():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--snapshots_path', default='')
+    parser.add_argument('--deploy_addr', default='0.0.0.0')
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--sizemm', type=int, default=140)
     parser.add_argument('--pad', type=int, default=300)
@@ -74,7 +75,7 @@ if __name__ == '__main__':
                           device=args.device)
 
     if args.deploy:
-        http_server = WSGIServer(('', 5001), app)
+        http_server = WSGIServer((args.deploy_addr, 5001), app)
         http_server.serve_forever()
     else:
-        app.run(host='', port=5001, debug=True)
+        app.run(host=args.deploy_addr, port=5001, debug=True)
