@@ -7,8 +7,13 @@ Codes for paper **Automatic Knee Osteoarthritis Diagnosis from Plain Radiographs
 
 **This branch is made only for inference purposes. Re-training is possible only in the master branch!!!**
 
-### Inference on your data
+### Running the backend server
+This code requires the fresh-most docker and docker compose installed.
 
+Execute `sh deploy.sh cpu` to deploy the app on CPU. If you have installed nvidia-docker,
+you can also deploy on GPU. The inference is 3 times faster on GPU. To deploy on GPU, run `sh deploy.sh gpu`.
+
+Be careful, this app carries all the dependencies and weighs around 10GB in total.
 
 ## License
 This code is freely available only for research purposes. Commercial use is not allowed by any means.
