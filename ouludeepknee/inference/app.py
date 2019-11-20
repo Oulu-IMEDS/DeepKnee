@@ -13,7 +13,7 @@ import cv2
 from flask import Flask, request
 from flask import jsonify, make_response
 from gevent.pywsgi import WSGIServer
-
+import logging
 from ouludeepknee.inference.pipeline import KneeNetEnsemble
 
 app = Flask(__name__)
@@ -69,13 +69,15 @@ if __name__ == '__main__':
     parser.add_argument('--deploy', type=bool, default=False)
     parser.add_argument('--logs', type=str, default='/tmp/deepknee.log')
     args = parser.parse_args()
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
+    logger = logging.getLogger(f'deepknee-backend:app')
 
     net = KneeNetEnsemble(glob.glob(os.path.join(args.snapshots_path, "*", '*.pth')),
                           mean_std_path=os.path.join(args.snapshots_path, 'mean_std.npy'),
                           device=args.device)
 
     if args.deploy:
-        http_server = WSGIServer((args.deploy_addr, 5001), app)
+        http_server = WSGIServer((args.deploy_addr, 5001), app, log=logger)
         http_server.serve_forever()
     else:
         app.run(host=args.deploy_addr, port=5001, debug=True)

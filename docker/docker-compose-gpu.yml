@@ -14,7 +14,7 @@ services:
        "--lc_snapshot_path", "/snapshots/lext-devbox_2019_07_14_16_04_41",
       "--hc_snapshot_path", "/snapshots/lext-devbox_2019_07_14_19_25_40",
       "--refine", "True", "--mean_std_path", "/snapshots/mean_std.npy",
-      "--deploy", "True", "--device", "cuda"]
+      "--deploy", "True", "--device", "cuda", "--port", "5000"]
   deepknee-backend:
     runtime: nvidia
     depends_on:
@@ -30,7 +30,7 @@ services:
         target: /snapshots/
         read_only: true
     environment:
-      - KNEEL_ADDR=http://127.0.0.1:5000
+      - KNEEL_ADDR=http://kneel:5000
     entrypoint: ["python", "-m", "ouludeepknee.inference.app",
                    "--snapshots_path", "/snapshots/",
                    "--device", "cuda", "--deploy", "True"]

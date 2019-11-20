@@ -21,6 +21,7 @@ from tqdm import tqdm
 import requests
 from pydicom import dcmread
 from pydicom.filebase import DicomBytesIO
+import logging
 
 from ouludeepknee.data.utils import read_dicom, process_xray
 
@@ -58,6 +59,7 @@ class KneeNetEnsemble(nn.Module):
     def __init__(self, snapshots_paths, mean_std_path, device=None):
         super().__init__()
         self.states = []
+        self.logger = logging.getLogger(f'deepknee-backend:pipeline')
         if device is None:
             if torch.cuda.is_available():
                 device = 'cuda'
@@ -66,6 +68,7 @@ class KneeNetEnsemble(nn.Module):
         self.device = device
         for snap_path in snapshots_paths:
             self.states.append(torch.load(snap_path, map_location=self.device))
+            self.logger.log(logging.INFO, f'Loaded weights from {snap_path}')
 
         self.cropper = CenterCrop(300)
         self.ohe = OneHotEncoder(sparse=False, categories=[range(5)])
@@ -95,6 +98,7 @@ class KneeNetEnsemble(nn.Module):
         self.grads_l1, self.grads_m1 = [], []
         self.grads_l2, self.grads_m2 = [], []
         self.grads_l3, self.grads_m3 = [], []
+        self.logger.log(logging.INFO, f'Gradient arrays have been emptied')
 
     def init_networks_from_states(self):
         models = {}
@@ -102,6 +106,7 @@ class KneeNetEnsemble(nn.Module):
             # Data Parallel was accidentally stored back in 2017.
             model = nn.DataParallel(KneeNet(64, 0.2, False)).to(self.device)
             model.load_state_dict(state)
+            self.logger.log(logging.INFO, f'Model {idx} state has been loaded')
             # Converting data parallel into a regular model
             model = model.module
             # Removing the dropout
@@ -117,9 +122,11 @@ class KneeNetEnsemble(nn.Module):
             branch = fuse_bn_recursively(branch)
             model.branch = branch
             models[f'net{idx + 1}'] = deepcopy(model)
+            self.logger.log(logging.INFO, f'Model {idx} has been initialized')
 
         self.__dict__['_modules'].update(models)
         self.to(self.device)
+        self.logger.log(logging.INFO, f'The whole pipeline has been moved to {self.device}')
 
     def load_picture(self, fname, nbits=16, flip_left=False):
         """
@@ -128,7 +135,7 @@ class KneeNetEnsemble(nn.Module):
             Takes either full path to the image or the numpy array
         :return:
         """
-
+        self.logger.log(logging.DEBUG, f'Processing {nbits} bit {"left" if flip_left else "right"} image')
         if isinstance(fname, str):
             img = Image.open(fname)
         elif isinstance(fname, np.ndarray):
@@ -157,26 +164,29 @@ class KneeNetEnsemble(nn.Module):
 
         lateral = self.patch_transform(lateral).to(self.device)
         medial = self.patch_transform(medial).to(self.device)
-
+        self.logger.log(logging.DEBUG, f'Image pre-processing has been finished')
         return img_cropped, lateral.view(1, 1, 128, 128), medial.view(1, 1, 128, 128)
 
-    @staticmethod
-    def decompose_forward_avg(net, l, m):
+    def decompose_forward_avg(self, net, l, m):
         # Reducing the memory footprint.
         # We don't really need gradients to compute the features
+        self.logger.log(logging.INFO, f'Forward pass started for {hex(id(net))}')
         with torch.no_grad():
             l_o = net.branch(l)
             m_o = net.branch(m)
             l_o_avg = F.adaptive_avg_pool2d(l_o, (1, 1))
             m_o_avg = F.adaptive_avg_pool2d(m_o, (1, 1))
+        self.logger.log(logging.DEBUG, f'Features have been extracted')
         # These variables will requre features as they will initiate the forward pass to the FC layer
         # From which we will get the gradients
         l_o_avg.requires_grad = True
         m_o_avg.requires_grad = True
         # A normal forward pass. Concatenating the outputs from the lateral and the medial sides
+        self.logger.log(logging.DEBUG, f'Pushing the feature maps through FC layer')
         concat = torch.cat([l_o_avg, m_o_avg], 1)
         # Passing the results through an FC layer
         o = net.final(concat.view(l.size(0), net.final.in_features))
+        self.logger.log(logging.INFO, f'Model {hex(id(net))} finished predictions')
         return l_o, m_o, l_o_avg, m_o_avg, o
 
     def weigh_maps(self, weights, maps):
@@ -190,12 +200,14 @@ class KneeNetEnsemble(nn.Module):
         return res
 
     def extract_gradcam_weighted_maps(self, o_l, o_m, wl, wm):
+        self.logger.log(logging.DEBUG, f'GradCAM-based weighing started')
         # After extracting the features, we weigh them based on the provided weights
         o_l = self.weigh_maps(wl, o_l)
         o_m = self.weigh_maps(wm, o_m)
         return F.relu(o_l), F.relu(o_m)
 
     def compute_gradcam(self, features, img_size, ps, smoothing=7):
+        self.logger.log(logging.INFO, f'GradCAM computation has been started')
         w_lateral, w_medial = self.grads_l1[0].data, self.grads_m1[0].data
         ol1, om1 = self.extract_gradcam_weighted_maps(features['net1'][0], features['net1'][1], w_lateral, w_medial)
 
@@ -207,7 +219,7 @@ class KneeNetEnsemble(nn.Module):
 
         l_out = (ol1 + ol2 + ol3) / 3.
         m_out = (om1 + om2 + om3) / 3.
-
+        self.logger.log(logging.INFO, f'Creating the heatmap')
         heatmap = inverse_pair_mapping(l_out.detach().to('cpu').numpy(),
                                        np.fliplr(m_out.detach().to('cpu').numpy()),
                                        img_size, ps, smoothing)
@@ -216,14 +228,8 @@ class KneeNetEnsemble(nn.Module):
         return heatmap
 
     def forward(self, l, m):
-        self.grads_l1 = []
-        self.grads_m1 = []
-
-        self.grads_l2 = []
-        self.grads_m2 = []
-
-        self.grads_l3 = []
-        self.grads_m3 = []
+        self.logger.log(logging.INFO, f'Forward pass started')
+        self.empty_gradient_arrays()
 
         # Producing the branch outputs and registering the corresponding hooks for attention maps
         # Net 1
@@ -285,6 +291,7 @@ class KneeNetEnsemble(nn.Module):
         :return: tuple
             Image, Heatmap, probabilities
         """
+        self.logger.log(logging.INFO, f'Prediction started')
         if fname_suffix is not None:
             pass
         elif isinstance(fileobj_in, str):
@@ -293,6 +300,7 @@ class KneeNetEnsemble(nn.Module):
             fname_suffix = ''
 
         img, heatmap, probs = self.predict(x=fileobj_in, nbits=nbits, flip_left=flip_left)
+        self.logger.log(logging.INFO, f'Drawing the heatmap')
         img = np.asarray(img)
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         if flip_left:
@@ -307,6 +315,7 @@ class KneeNetEnsemble(nn.Module):
             cv2.imwrite(tmp_fname, img_overlayed)
 
         # Making a bar plot for displaying probabilities
+        self.logger.log(logging.INFO, f'Drawing the vector with probabilities')
         plt.figure(figsize=(6, 1))
         for kl in range(5):
             plt.text(kl - 0.2, 0.35, "%.2f" % np.round(probs[kl], 2), fontsize=15)
@@ -326,24 +335,24 @@ class KneeNetEnsemble(nn.Module):
         if path_dir_out is not None:
             tmp_fname = os.path.join(path_dir_out, f'prob_{fname_suffix}.png')
             cv2.imwrite(tmp_fname, probs_bar)
-
+        self.logger.log(logging.INFO, f'Sending the results back to the user')
         return img, img_overlayed, probs_bar, probs.squeeze().argmax()
 
-    @staticmethod
-    def localize_bilateral(dicom_raw, sizemm, pad):
+    def localize_bilateral(self, dicom_raw, sizemm, pad):
         files = {'dicom': dicom_raw}
-
+        self.logger.log(logging.INFO, f'Sending the image to KNEEL: {os.environ["KNEEL_ADDR"]}')
         response = requests.post(f'{os.environ["KNEEL_ADDR"]}/predict/bilateral', files=files)
         landmarks = response.json()
         if landmarks['R'] is None:
+            self.logger.log(logging.INFO, f'Landmarks have not been localized. Returning None')
             return None
-
+        self.logger.log(logging.INFO, f'Image decoding and pre-processing started')
         raw = DicomBytesIO(dicom_raw)
         dicom_data = dcmread(raw)
         img, spacing, dicom_data = read_dicom(dicom_data)
         img = process_xray(img, 5, 99, 255).astype(np.uint8)
         sizepx = int(np.round(sizemm / spacing))
-
+        self.logger.log(logging.DEBUG, f'Padding the image')
         row, col = img.shape
         tmp = np.zeros((row + 2 * pad, col + 2 * pad))
         tmp[pad:pad + row, pad:pad + col] = img
@@ -361,10 +370,12 @@ class KneeNetEnsemble(nn.Module):
         img_right = img[(rcy - sizepx // 2):(rcy + sizepx // 2),
                     (rcx - sizepx // 2):(rcx + sizepx // 2)].astype(np.uint8)
 
+        self.logger.log(logging.INFO, f'Returning localized left and right knees')
         return img_left, img_right
 
     def predict_draw_bilateral(self, dicom_raw, sizemm, pad):
-        res_landmarks = KneeNetEnsemble.localize_bilateral(dicom_raw, sizemm, pad)
+        self.logger.log(logging.INFO, f'Received DICOM')
+        res_landmarks = self.localize_bilateral(dicom_raw, sizemm, pad)
         if res_landmarks is None:
             return None
 
