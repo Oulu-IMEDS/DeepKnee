@@ -9,6 +9,9 @@ __pycache__/
 .idea/*
 ./snapshots_knee_grading/*
 ./snapshots_release_kneel/*
+snapshots_knee_grading/
+snapshots_release_kneel/
+
 # Distribution / packaging
 .Python
 env/
