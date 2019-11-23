@@ -10,6 +10,7 @@ fi
 if [ ! -d "snapshots_knee_grading" ]; then
     sh ./fetch_snapshots.sh
 fi
+mkdir -p logs
 
 docker-compose -f ./docker/docker-compose-$1.yml down
 docker-compose -f ./docker/docker-compose-$1.yml build

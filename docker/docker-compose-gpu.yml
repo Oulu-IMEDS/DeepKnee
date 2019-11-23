@@ -10,11 +10,14 @@ services:
         source: ../snapshots_release_kneel # The snapshots are stored in the root directory
         target: /snapshots/
         read_only: true
+      - type: bind
+        source: ../logs
+        target: /logs/
     entrypoint: ["python", "-u", "-m", "kneel.inference.app",
        "--lc_snapshot_path", "/snapshots/lext-devbox_2019_07_14_16_04_41",
       "--hc_snapshot_path", "/snapshots/lext-devbox_2019_07_14_19_25_40",
       "--refine", "True", "--mean_std_path", "/snapshots/mean_std.npy",
-      "--deploy", "True", "--device", "cuda", "--port", "5000"]
+      "--deploy", "True", "--device", "cuda", "--port", "5000", "--logs", "/logs/kneel-gpu.log"]
   deepknee-backend:
     runtime: nvidia
     depends_on:
@@ -33,4 +36,5 @@ services:
       - KNEEL_ADDR=http://kneel:5000
     entrypoint: ["python", "-m", "ouludeepknee.inference.app",
                    "--snapshots_path", "/snapshots/",
-                   "--device", "cuda", "--deploy", "True"]
+                   "--device", "cuda", "--deploy", "True",
+                 "--port", "5001", "--logs", "/logs/deepknee-cpu.log"]

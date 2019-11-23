@@ -338,14 +338,23 @@ class KneeNetEnsemble(nn.Module):
         self.logger.log(logging.INFO, f'Sending the results back to the user')
         return img, img_overlayed, probs_bar, probs.squeeze().argmax()
 
-    def localize_bilateral(self, dicom_raw, sizemm, pad):
-        files = {'dicom': dicom_raw}
+    def request_landmarks(self, kneel_addr, file):
         self.logger.log(logging.INFO, f'Sending the image to KNEEL: {os.environ["KNEEL_ADDR"]}')
-        response = requests.post(f'{os.environ["KNEEL_ADDR"]}/predict/bilateral', files=files)
+        if kneel_addr is None:
+            kneel_addr = os.environ["KNEEL_ADDR"]
+
+        response = requests.post(f'{kneel_addr}/kneel/predict/bilateral', files=file)
         landmarks = response.json()
+        return landmarks
+
+    def localize_bilateral(self, dicom_raw, sizemm, pad, kneel_addr=None, landmarks=None):
+        if landmarks is None:
+            landmarks = self.request_landmarks(kneel_addr, {'dicom': dicom_raw})
+
         if landmarks['R'] is None:
-            self.logger.log(logging.INFO, f'Landmarks have not been localized. Returning None')
+            self.logger.log(logging.INFO, f'Landmarks are not found. Returning None')
             return None
+
         self.logger.log(logging.INFO, f'Image decoding and pre-processing started')
         raw = DicomBytesIO(dicom_raw)
         dicom_data = dcmread(raw)
@@ -373,9 +382,8 @@ class KneeNetEnsemble(nn.Module):
         self.logger.log(logging.INFO, f'Returning localized left and right knees')
         return img_left, img_right
 
-    def predict_draw_bilateral(self, dicom_raw, sizemm, pad):
-        self.logger.log(logging.INFO, f'Received DICOM')
-        res_landmarks = self.localize_bilateral(dicom_raw, sizemm, pad)
+    def predict_draw_bilateral(self, dicom_raw, sizemm, pad, kneel_addr=None, landmarks=None):
+        res_landmarks = self.localize_bilateral(dicom_raw, sizemm, pad, kneel_addr, landmarks)
         if res_landmarks is None:
             return None
 

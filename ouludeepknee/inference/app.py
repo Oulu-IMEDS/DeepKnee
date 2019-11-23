@@ -13,10 +13,15 @@ import cv2
 from flask import Flask, request
 from flask import jsonify, make_response
 from gevent.pywsgi import WSGIServer
+import socketio
+import eventlet
+
 import logging
 from ouludeepknee.inference.pipeline import KneeNetEnsemble
 
 app = Flask(__name__)
+# Wrap Flask application with socketio's middleware
+sio = socketio.Server(ping_timeout=120, ping_interval=120)
 
 
 def numpy2base64(img):
@@ -24,14 +29,10 @@ def numpy2base64(img):
     return 'data:image/png;base64,' + base64.b64encode(buffer).decode('ascii')
 
 
-# curl -F dicom=@01 -X POST http://127.0.0.1:5001/predict/bilateral
-@app.route('/predict/bilateral', methods=['POST'])
-def analyze_knee():
-    if os.environ['KNEEL_ADDR'] == '':
-        return make_response(jsonify({'msg': 'KNEEL microservice is not defined'}), 500)
-    dicom_raw = request.files['dicom'].read()
+def call_pipeline(dicom_raw, landmarks=None):
     # Localization of ROIs and their conversion into 8-bit 140x140mm images
-    res_bilateral = net.predict_draw_bilateral(dicom_raw, args.sizemm, args.pad)
+    res_bilateral = net.predict_draw_bilateral(dicom_raw, args.sizemm, args.pad,
+                                               kneel_addr=os.environ['KNEEL_ADDR'], landmarks=landmarks)
     if res_bilateral is None:
         return make_response(jsonify({'msg': 'Could not localize the landmarks'}), 400)
 
@@ -46,17 +47,33 @@ def analyze_knee():
                       'preds_bar': numpy2base64(preds_bar_r),
                       'kl': str(pred_r)},
                 'msg': 'Finished!'}
+    return response
+
+# curl -F dicom=@01 -X POST http://127.0.0.1:5001/deepknee/predict/bilateral
+@app.route('/deepknee/predict/bilateral', methods=['POST'])
+def analyze_knee():
+    logger = logging.getLogger(f'deepknee-backend:app')
+    dicom_raw = request.files['dicom'].read()
+    logger.log(logging.INFO, f'Received DICOM')
+
+    if os.environ['KNEEL_ADDR'] == '':
+        return make_response(jsonify({'msg': 'KNEEL microservice is not defined'}), 500)
+
+    response = call_pipeline(dicom_raw)
 
     return make_response(response, 200)
 
 
-@app.route('/predict/single', methods=['POST'])
-def analyze_single_knee():
-    """
-    Runs prediction for a single cropped right knee X-ray.
+@sio.on('dicom_submission', namespace='/deepknee/sockets')
+def on_dicom_submission(sid, data):
+    sio.emit('dicom_received', dict(), room=sid, namespace='/deepknee/sockets')
+    logger.info(f'Sent a message back to {sid}')
+    sio.sleep(0)
 
-    """
-    raise NotImplementedError
+    tmp = data['file_blob'].split(',', 1)[1]
+    response = call_pipeline(base64.b64decode(tmp))
+    # Send out the results
+    sio.emit('dicom_processed', response, room=sid, namespace='/deepknee/sockets')
 
 
 if __name__ == '__main__':
@@ -64,20 +81,27 @@ if __name__ == '__main__':
     parser.add_argument('--snapshots_path', default='')
     parser.add_argument('--deploy_addr', default='0.0.0.0')
     parser.add_argument('--device', default='cuda')
+    parser.add_argument('--port', type=int, default=5001)
     parser.add_argument('--sizemm', type=int, default=140)
     parser.add_argument('--pad', type=int, default=300)
     parser.add_argument('--deploy', type=bool, default=False)
     parser.add_argument('--logs', type=str, default='/tmp/deepknee.log')
     args = parser.parse_args()
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
+    logging.basicConfig(filename=args.logs, filemode='a',
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
+
     logger = logging.getLogger(f'deepknee-backend:app')
 
     net = KneeNetEnsemble(glob.glob(os.path.join(args.snapshots_path, "*", '*.pth')),
                           mean_std_path=os.path.join(args.snapshots_path, 'mean_std.npy'),
                           device=args.device)
 
+    app = socketio.WSGIApp(sio, app, socketio_path='/deepknee/sockets/socket.io')
+
     if args.deploy:
-        http_server = WSGIServer((args.deploy_addr, 5001), app, log=logger)
-        http_server.serve_forever()
+        # Deploy as an eventlet WSGI server
+        eventlet.wsgi.server(eventlet.listen((args.deploy_addr, args.port)), app, log=logger)
+        # http_server = WSGIServer((args.deploy_addr, 5001), app, log=logger)
+        # http_server.serve_forever()
     else:
-        app.run(host=args.deploy_addr, port=5001, debug=True)
+        app.run(host=args.deploy_addr, port=args.port, debug=True)
