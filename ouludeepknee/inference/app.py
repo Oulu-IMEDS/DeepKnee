@@ -7,26 +7,23 @@
 import argparse
 import base64
 import glob
+import logging
 import os
 
 import cv2
 from flask import Flask, request
 from flask import jsonify, make_response
 from gevent.pywsgi import WSGIServer
-import socketio
-import eventlet
 
-import logging
 from ouludeepknee.inference.pipeline import KneeNetEnsemble
-
-app = Flask(__name__)
-# Wrap Flask application with socketio's middleware
-sio = socketio.Server(ping_timeout=120, ping_interval=120)
 
 
 def numpy2base64(img):
     _, buffer = cv2.imencode('.png', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
     return 'data:image/png;base64,' + base64.b64encode(buffer).decode('ascii')
+
+
+app = Flask(__name__)
 
 
 def call_pipeline(dicom_raw, landmarks=None):
@@ -49,6 +46,7 @@ def call_pipeline(dicom_raw, landmarks=None):
                 'msg': 'Finished!'}
     return response
 
+
 # curl -F dicom=@01 -X POST http://127.0.0.1:5001/deepknee/predict/bilateral
 @app.route('/deepknee/predict/bilateral', methods=['POST'])
 def analyze_knee():
@@ -62,18 +60,6 @@ def analyze_knee():
     response = call_pipeline(dicom_raw)
 
     return make_response(response, 200)
-
-
-@sio.on('dicom_submission', namespace='/deepknee/sockets')
-def on_dicom_submission(sid, data):
-    sio.emit('dicom_received', dict(), room=sid, namespace='/deepknee/sockets')
-    logger.info(f'Sent a message back to {sid}')
-    sio.sleep(0)
-
-    tmp = data['file_blob'].split(',', 1)[1]
-    response = call_pipeline(base64.b64decode(tmp))
-    # Send out the results
-    sio.emit('dicom_processed', response, room=sid, namespace='/deepknee/sockets')
 
 
 if __name__ == '__main__':
@@ -96,12 +82,8 @@ if __name__ == '__main__':
                           mean_std_path=os.path.join(args.snapshots_path, 'mean_std.npy'),
                           device=args.device)
 
-    app = socketio.WSGIApp(sio, app, socketio_path='/deepknee/sockets/socket.io')
-
     if args.deploy:
-        # Deploy as an eventlet WSGI server
-        eventlet.wsgi.server(eventlet.listen((args.deploy_addr, args.port)), app, log=logger)
-        # http_server = WSGIServer((args.deploy_addr, 5001), app, log=logger)
-        # http_server.serve_forever()
+        http_server = WSGIServer((args.deploy_addr, args.port), app, log=logger)
+        http_server.serve_forever()
     else:
         app.run(host=args.deploy_addr, port=args.port, debug=True)
