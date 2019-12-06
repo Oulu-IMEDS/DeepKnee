@@ -11,6 +11,7 @@ __pycache__/
 ./snapshots_release_kneel/*
 snapshots_knee_grading/
 snapshots_release_kneel/
+frontend/srv/node_modules/
 
 # Distribution / packaging
 .Python
