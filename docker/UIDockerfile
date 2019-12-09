@@ -1,0 +1,12 @@
+FROM node:10
+
+ARG $DEPLOY_PORT
+ENV REACT_APP_BROKER_PORT $DEPLOY_PORT
+
+WORKDIR /usr/src/app
+COPY . .
+
+RUN npm install -g serve
+RUN npm install
+RUN npm run build
+

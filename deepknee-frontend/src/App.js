@@ -116,10 +116,10 @@ class App extends Component {
                 <div className="container" style={{visibility: state.image_1st_raw == null ? "hidden" : ""}}>
                     <div className="row" style={{height: "20px"}}>
                         <div className="col-sm">
-                            <p className="text-center font-weight-bold">Left knee</p>
+                            <p className="text-center font-weight-bold">Right knee</p>
                         </div>
                         <div className="col-sm">
-                            <p className="text-center font-weight-bold">Right knee</p>
+                            <p className="text-center font-weight-bold">Left knee</p>
                         </div>
                     </div>
                     <div className="row" style={{height: "400px"}}>

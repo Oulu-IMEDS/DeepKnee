@@ -3,7 +3,6 @@ FROM miptmloulu/kneel:cpu
 
 MAINTAINER Aleksei Tiulpin, University of Oulu, Version 1.0
 
-RUN rm -rf /opt/pkg
-RUN mkdir -p /opt/pkg/
-COPY . /opt/pkg/
-RUN pip install /opt/pkg/
+RUN mkdir -p /opt/pkg-deepknee/
+COPY . /opt/pkg-deepknee/
+RUN pip install /opt/pkg-deepknee/

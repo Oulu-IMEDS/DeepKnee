@@ -4,13 +4,12 @@ import openSocket from 'socket.io-client';
 class SIOClient extends Component {
     constructor(props) {
         super(props);
-        const port = process.env.PORT || "4001";
-        const host = process.env.SRV_HOST || "http://127.0.0.1";
-        console.log(port);
+        const port = process.env.REACT_APP_BROKER_PORT || "4001";
+        const host = process.env.REACT_APP_BROKER_ADDR || "http://127.0.0.1";
+
         this.state = {
             endpoint:  `${host}:${port}/`
         };
-        console.log(this.state);
         this.socket = openSocket(
             this.state.endpoint,
             {path: `/socket.io`,

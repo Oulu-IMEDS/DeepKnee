@@ -19,8 +19,8 @@ from ouludeepknee.inference.pipeline import KneeNetEnsemble
 
 
 def numpy2base64(img):
-    _, buffer = cv2.imencode('.png', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-    return 'data:image/png;base64,' + base64.b64encode(buffer).decode('ascii')
+    _, buffer = cv2.imencode('.png', img)
+    return base64.b64encode(buffer).decode('ascii')
 
 
 app = Flask(__name__)
@@ -42,22 +42,26 @@ def call_pipeline(dicom_raw, landmarks=None):
                 'R': {'img': numpy2base64(img_r),
                       'hm': numpy2base64(img_hm_r),
                       'preds_bar': numpy2base64(preds_bar_r),
-                      'kl': str(pred_r)},
-                'msg': 'Finished!'}
+                      'kl': str(pred_r)}}
     return response
 
 
-# curl -F dicom=@01 -X POST http://127.0.0.1:5001/deepknee/predict/bilateral
 @app.route('/deepknee/predict/bilateral', methods=['POST'])
 def analyze_knee():
     logger = logging.getLogger(f'deepknee-backend:app')
-    dicom_raw = request.files['dicom'].read()
+    request_json = request.get_json(force=True)
+    dicom_base64 = request_json['dicom']
+    dicom_binary = base64.b64decode(dicom_base64)
+    if 'landmarks' in request_json:
+        landmarks = request_json['landmarks']
+    else:
+        landmarks = None
     logger.log(logging.INFO, f'Received DICOM')
 
     if os.environ['KNEEL_ADDR'] == '':
-        return make_response(jsonify({'msg': 'KNEEL microservice is not defined'}), 500)
+        return make_response(jsonify({'msg': 'KNEEL microservice address is not defined'}), 500)
 
-    response = call_pipeline(dicom_raw)
+    response = call_pipeline(dicom_binary, landmarks)
 
     return make_response(response, 200)
 

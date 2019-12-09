@@ -20,9 +20,7 @@ services:
   deepknee-backend:
     depends_on:
       - kneel
-    build:
-      context: ../
-      dockerfile: ./docker/Dockerfile.cpu
+    image: "miptmloulu/deepknee:cpu"
     ports:
       - "5001:5001"
     volumes:
