@@ -17,6 +17,18 @@ Be careful, this app carries all the dependencies and weighs around 10GB in tota
 
 # Technical documentation
 
+The software is currently composed of four separate loosely-coupled services. Specifically, those are:
+
+1. `KNEEL` - Knee joint and landmark localization (https://arxiv.org/abs/1907.12237). REST microservice, port 5000.
+2. `DeepKnee` - Automatic KL grading (this work, https://www.nature.com/articles/s41598-018-20132-7). REST microservice running on port 5001.
+3. `Backend broker` - a NodeJS microservice implementing asynchronous communication between microservices and UI (socket.io). It runs on 5002 port.
+4. `UI` - User Interface implemented in ReactJS. This part runs on 5003.
+
+The platform is designed so that it is possible to use `KNEEL` and `DeepKnee` separately. Both microservices expect
+a `JSON` with `{dicom: <I64>}`, where `<I64>` is the dicom file encoded in `base64`. If you make a request to either of the services,
+it needs to be done to `/kneel/predict/bilateral` or `/deepknee/predict/bilateral` for `KNEEL` and `DeepKnee`, respectively.
+A Jupyter Notebook `request_example.ipynb` demonstrates an example of such request.
+
 ## License
 This code is freely available only for research purposes. Commercial use is not allowed by any means.
 The provided software is not cleared for diagnostic purposes.
