@@ -5,6 +5,7 @@ services:
     image: "miptmloulu/kneel:gpu"
     ports:
       - "5000:5000"
+    container_name: kneel
     volumes:
       - type: bind
         source: ../snapshots_release_kneel # The snapshots are stored in the root directory
@@ -22,9 +23,10 @@ services:
     runtime: nvidia
     depends_on:
       - kneel
-    image: "miptmloulu/kneel:gpu"
+    image: "miptmloulu/deepknee:gpu"
     ports:
       - "5001:5001"
+    container_name: deepknee
     volumes:
       - type: bind
         source: ../snapshots_knee_grading/ # The snapshots are stored in the root directory
@@ -36,9 +38,9 @@ services:
     environment:
       - KNEEL_ADDR=http://kneel:5000
     entrypoint: ["python", "-m", "ouludeepknee.inference.app",
-                   "--snapshots_path", "/snapshots/",
-                   "--device", "cuda", "--deploy", "True",
-                 "--port", "5001", "deploy_addr", "0.0.0.0",
+                 "--snapshots_path", "/snapshots/",
+                 "--device", "cuda", "--deploy", "True",
+                 "--port", "5001", "--deploy_addr", "0.0.0.0",
                  "--logs", "/logs/deepknee-gpu.log"]
   backend-broker:
     depends_on:
@@ -47,15 +49,16 @@ services:
     build:
       context: ../deepknee-backend-broker
       dockerfile: ../docker/BrokerDockerfile
+    container_name: backend-broker
     ports:
       - "5002:5002"
     environment:
+      - DEPLOY_HOST=0.0.0.0
+      - DEPLOY_PORT=5002
       - KNEEL_ADDR=http://kneel
       - KNEEL_PORT=5000
       - DEEPKNEE_ADDR=http://deepknee-backend
       - DEEPKNEE_PORT=5001
-      - DEPLOY_HOST=0.0.0.0
-      - DEPLOY_PORT=5002
     entrypoint: ["node", "/usr/src/app/server.js"]
   ui:
     depends_on:
@@ -66,7 +69,8 @@ services:
       context: ../deepknee-frontend
       dockerfile: ../docker/UIDockerfile
       args:
-        - DEPLOY_PORT=5002
+        - REACT_APP_BROKER_PORT=5002
+    container_name: ui
     ports:
       - "5003:5003"
     entrypoint: ["serve", "-l", "5003", "-s", "/usr/src/app/build"]
