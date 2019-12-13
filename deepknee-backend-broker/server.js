@@ -32,7 +32,7 @@ io.on('connection',  async (socket) => {
     console.log('Got a DICOM file');
     socket.emit('dicom_received', {});
     socket.emit('processing_by_kneel', {});
-    let base64_processed = dicom_base64.file_blob.split(',').pop();
+    let base64_processed = dicom_base64.file_blob.split(',').pop().replace(/\0/g, '');
 
     response = await request(kneel_url_bilateral, {
       method: 'POST',
