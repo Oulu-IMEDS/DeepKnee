@@ -70,7 +70,9 @@ services:
       dockerfile: ../docker/UIDockerfile
       args:
         - REACT_APP_BROKER_PORT=5002
+      environment: 
+        - PORT=5003
     container_name: ui
     ports:
       - "5003:5003"
-    entrypoint: ["serve", "-l", "5003", "-s", "/usr/src/app/build"]
+    entrypoint: ["npm", "start"] ##["serve", "-l", "5003", "-s", "/usr/src/app/build"]

@@ -88,6 +88,7 @@ if __name__ == '__main__':
 
     if args.deploy:
         http_server = WSGIServer((args.deploy_addr, args.port), app, log=logger)
+        logger.log(logging.INFO, f'Starting WSGI server')
         http_server.serve_forever()
     else:
         app.run(host=args.deploy_addr, port=args.port, debug=True)

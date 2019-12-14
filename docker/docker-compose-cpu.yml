@@ -70,4 +70,5 @@ services:
     container_name: ui
     ports:
       - "5003:5003"
-    entrypoint: ["serve", "-l", "5003", "-s", "/usr/src/app/build"]
+    working_dir: /usr/src/app/
+    entrypoint: ["npm", "start"] ##["serve", "-l", "5003", "-s", "/usr/src/app/build"]
