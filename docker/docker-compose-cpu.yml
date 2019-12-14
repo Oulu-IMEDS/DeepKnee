@@ -43,9 +43,7 @@ services:
     depends_on:
       - kneel
       - deepknee-backend
-    build:
-      context: ../deepknee-backend-broker
-      dockerfile: ../docker/BrokerDockerfile
+    image: "miptmloulu/deepknee:broker"
     container_name: backend-broker
     ports:
       - "5002:5002"
@@ -62,13 +60,9 @@ services:
       - kneel
       - deepknee-backend
       - backend-broker
-    build:
-      context: ../deepknee-frontend
-      dockerfile: ../docker/UIDockerfile
-      args:
-        - REACT_APP_BROKER_PORT=5002
+    image: "miptmloulu/deepknee:ui"
     container_name: ui
     ports:
       - "5003:5003"
     working_dir: /usr/src/app/
-    entrypoint: ["react-scripts", "start"] ##["serve", "-l", "5003", "-s", "/usr/src/app/build"]
+    entrypoint: ["serve", "-l", "5003", "-s", "/usr/src/app/build"]

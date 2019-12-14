@@ -18,7 +18,8 @@ services:
        "--lc_snapshot_path", "/snapshots/lext-devbox_2019_07_14_16_04_41",
       "--hc_snapshot_path", "/snapshots/lext-devbox_2019_07_14_19_25_40",
       "--refine", "True", "--mean_std_path", "/snapshots/mean_std.npy",
-      "--deploy", "True", "--device", "cuda", "--port", "5000", "--logs", "/logs/kneel-gpu.log"]
+      "--deploy", "True", "--device", "cuda", 
+      "--port", "5000", "--logs", "/logs/kneel-gpu.log"]
   deepknee-backend:
     runtime: nvidia
     depends_on:
@@ -46,9 +47,7 @@ services:
     depends_on:
       - kneel
       - deepknee-backend
-    build:
-      context: ../deepknee-backend-broker
-      dockerfile: ../docker/BrokerDockerfile
+    image: "miptmloulu/deepknee:broker"
     container_name: backend-broker
     ports:
       - "5002:5002"
@@ -65,14 +64,8 @@ services:
       - kneel
       - deepknee-backend
       - backend-broker
-    build:
-      context: ../deepknee-frontend
-      dockerfile: ../docker/UIDockerfile
-      args:
-        - REACT_APP_BROKER_PORT=5002
-      environment: 
-        - PORT=5003
+    image: "miptmloulu/deepknee:ui"
     container_name: ui
     ports:
       - "5003:5003"
-    entrypoint: ["react-scripts", "start"] ##["serve", "-l", "5003", "-s", "/usr/src/app/build"]
+    entrypoint: ["serve", "-l", "5003", "-s", "/usr/src/app/build"]
