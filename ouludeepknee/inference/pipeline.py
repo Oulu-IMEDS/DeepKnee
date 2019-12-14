@@ -22,6 +22,7 @@ import requests
 from pydicom import dcmread
 from pydicom.filebase import DicomBytesIO
 import logging
+import base64
 
 from ouludeepknee.data.utils import read_dicom, process_xray
 
@@ -343,13 +344,13 @@ class KneeNetEnsemble(nn.Module):
         if kneel_addr is None:
             kneel_addr = os.environ["KNEEL_ADDR"]
 
-        response = requests.post(f'{kneel_addr}/kneel/predict/bilateral', files=file)
+        response = requests.post(f'{kneel_addr}/kneel/predict/bilateral', json=file)
         landmarks = response.json()
         return landmarks
 
     def localize_bilateral(self, dicom_raw, sizemm, pad, kneel_addr=None, landmarks=None):
         if landmarks is None:
-            landmarks = self.request_landmarks(kneel_addr, {'dicom': dicom_raw})
+            landmarks = self.request_landmarks(kneel_addr, {'dicom': base64.b64encode(dicom_raw).decode()})
 
         if landmarks['R'] is None:
             self.logger.log(logging.INFO, f'Landmarks are not found. Returning None')
