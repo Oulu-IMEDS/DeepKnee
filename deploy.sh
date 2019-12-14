@@ -12,10 +12,6 @@ if [ ! -d "snapshots_knee_grading" ]; then
 fi
 mkdir -p logs
 
-if [ ! -x "$(command -v git)" ]; then
-    alias docker-compose=docker-compose.exe
-fi
-
 docker-compose -f ./docker/docker-compose-$1.yml down
 docker-compose -f ./docker/docker-compose-$1.yml build
 docker-compose -f ./docker/docker-compose-$1.yml up
