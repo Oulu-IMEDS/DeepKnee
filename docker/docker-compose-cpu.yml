@@ -71,4 +71,4 @@ services:
     ports:
       - "5003:5003"
     working_dir: /usr/src/app/
-    entrypoint: ["npm", "start"] ##["serve", "-l", "5003", "-s", "/usr/src/app/build"]
+    entrypoint: ["react-scripts", "start"] ##["serve", "-l", "5003", "-s", "/usr/src/app/build"]

@@ -75,4 +75,4 @@ services:
     container_name: ui
     ports:
       - "5003:5003"
-    entrypoint: ["npm", "start"] ##["serve", "-l", "5003", "-s", "/usr/src/app/build"]
+    entrypoint: ["react-scripts", "start"] ##["serve", "-l", "5003", "-s", "/usr/src/app/build"]
