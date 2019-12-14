@@ -4,3 +4,4 @@ snapshots_release_kneel/*
 deepknee-frontend/*
 deepknee-backend-broker/*
 logs/*
+.git/
