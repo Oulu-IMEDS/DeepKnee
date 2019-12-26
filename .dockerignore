@@ -1,7 +1,10 @@
 snapshots_knee_grading/*
 *.egg-info
 snapshots_release_kneel/*
+snapshots_release/*
 deepknee-frontend/*
 deepknee-backend-broker/*
+pacs-integration/*
+pics/*
 logs/*
 .git/

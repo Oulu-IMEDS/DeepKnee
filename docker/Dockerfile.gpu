@@ -3,6 +3,8 @@ FROM miptmloulu/kneel:gpu
 
 MAINTAINER Aleksei Tiulpin, University of Oulu, Version 1.0
 
+RUN pip install pynetdicom
+
 RUN mkdir -p /opt/pkg-deepknee/
 COPY . /opt/pkg-deepknee/
 RUN pip install /opt/pkg-deepknee/

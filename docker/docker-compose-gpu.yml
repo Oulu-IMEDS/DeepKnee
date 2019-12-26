@@ -51,7 +51,7 @@ services:
     container_name: orthanc-pacs
     ports:
       - "6000:4242"
-      - "8042:8042"
+      - "6001:8042"
     volumes:
       - type: bind
         source: ../pacs-integration/orthanc.json
@@ -64,7 +64,7 @@ services:
         condition: service_started
       orthanc-pacs:
         condition: service_started
-    image: "miptmloulu/kneel:cpu"
+    image: "miptmloulu/deepknee:cpu"
     container_name: dicom-router
     volumes:
       - type: bind
@@ -72,8 +72,12 @@ services:
         target: /opt/change_polling.py
     entrypoint: ["python", "-u", "/opt/change_polling.py",
                  "--deepknee_addr", "http://deepknee",
+                 "--deepknee_port", "5001",
                  "--orthanc_addr", "http://orthanc-pacs",
-                 "--orthanc_port", "8042"]
+                 "--orthanc_http_port", "8042",
+                 "--orthanc_dicom_port", "4242",
+                 '--remote_pacs_addr', 'orthanc-pacs',
+                 '--remote_pacs_port', '4242']
   backend-broker:
     depends_on:
       - kneel
