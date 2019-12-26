@@ -43,6 +43,37 @@ services:
                  "--device", "cuda", "--deploy", "True",
                  "--port", "5001", "--deploy_addr", "0.0.0.0",
                  "--logs", "/logs/deepknee-gpu.log"]
+  orthanc-pacs:
+    depends_on:
+      - kneel
+      - deepknee-backend
+    image: "jodogne/orthanc"
+    container_name: orthanc-pacs
+    ports:
+      - "6000:4242"
+      - "8042:8042"
+    volumes:
+      - type: bind
+        source: ../pacs-integration/orthanc.json
+        target: /etc/orthanc/orthanc.json
+  dicom-router:
+    depends_on:
+      kneel:
+        condition: service_started
+      deepknee-backend:
+        condition: service_started
+      orthanc-pacs:
+        condition: service_started
+    image: "miptmloulu/kneel:cpu"
+    container_name: dicom-router
+    volumes:
+      - type: bind
+        source: ../pacs-integration/change_polling.py
+        target: /opt/change_polling.py
+    entrypoint: ["python", "-u", "/opt/change_polling.py",
+                 "--deepknee_addr", "http://deepknee",
+                 "--orthanc_addr", "http://orthanc-pacs",
+                 "--orthanc_port", "8042"]
   backend-broker:
     depends_on:
       - kneel

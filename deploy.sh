@@ -14,4 +14,4 @@ mkdir -p logs
 
 docker-compose -f ./docker/docker-compose-$1.yml down
 docker-compose -f ./docker/docker-compose-$1.yml build
-docker-compose -f ./docker/docker-compose-$1.yml up
+docker-compose -f ./docker/docker-compose-$1.yml up --remove-orphans
