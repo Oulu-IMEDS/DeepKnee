@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import glob
 import argparse
 import requests
@@ -7,6 +9,7 @@ import cv2
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
+
 
 def base64tonumpy(buffer):
     binary = base64.b64decode(buffer)
