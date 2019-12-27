@@ -27,7 +27,9 @@ you can also deploy on GPU. The inference is 3 times faster on GPU. To deploy on
 To test the software, just check in your browser `localhost:5003`. Here is an example of the result of processing
 a single knee X-ray via UI:
 
+<p align="center">
 <img src="pics/deepkneeui.png" width="800" alt="UI pic"/> 
+</p>
 
 A YouTube Video describing the process of using the UI is shown here: https://youtu.be/4wcnmsxvim8.
 The video has been recorded for DeepKnee v1, but nothing has really changed since then.
@@ -51,9 +53,11 @@ it needs to be done to `/kneel/predict/bilateral` or `/deepknee/predict/bilatera
 
 An example script that uses the platform can be found in the file `analyze_folder.py`.
 
-Below you can see a schematic representation of the software architecture
-<img src="pics/deepknee-architecture.png" width="600" alt="DeepKnee Architecture"/> 
+Below you can see a schematic representation of the software architecture:
 
+<p align="center">
+<img src="pics/deepknee-architecture.png" width="600" alt="DeepKnee Architecture"/> 
+</p>
 
 ## A few words about PACS integration
 To deploy this software in your network with persistent PACS, you need to modify docker-compose file which is used
