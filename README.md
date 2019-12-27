@@ -52,7 +52,7 @@ it needs to be done to `/kneel/predict/bilateral` or `/deepknee/predict/bilatera
 An example script that uses the platform can be found in the file `analyze_folder.py`.
 
 Below you can see a schematic representation of the software architecture
-<img src="pics/deepknee-architecture.png" width="800" alt="DeepKnee Architecture"/> 
+<img src="pics/deepknee-architecture.png" width="600" alt="DeepKnee Architecture"/> 
 
 
 ## A few words about PACS integration
@@ -60,7 +60,7 @@ To deploy this software in your network with persistent PACS, you need to modify
 to run DeepKnee. Specifically, you need to change the entry point parameters of `dicom-router` service 
 modifying `--remote_pacs_addr` and `--remote_pacs_port` parameters. The software creates an exact copy of the X-ray that 
 came via DICOM, creates new Instance ID and then stores KL grades in `(00040, 0A160)` DICOM field. 
-DeepKnee does not store neither heatmaps nor softmax outputs in DICOM.  
+DeepKnee does not store neither heatmaps nor softmax outputs in DICOM. The AET for DeepKnee is `DEEPKNEE` :-).
 
 ## License
 This code is freely available only for research purposes. Commercial use is not allowed by any means.
