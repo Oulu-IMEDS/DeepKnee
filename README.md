@@ -19,8 +19,11 @@ The current version of DeepKnee uses only the UI from the previous version.
 This software is not a medical device and intended for the use in research settings only.
 
 ### Running the software
-This code requires the fresh-most docker and docker compose installed. 
-Be careful, this app carries all the dependencies and weighs around 20GB in total.
+This code requires the fresh-most docker and docker compose installed.  
+You can follow [INSTALLATION.md](INSTALLATION.md) and this will allow to install the 
+DeepKnee and the dependencies.   
+
+**!!Be careful, this app carries all the dependencies and weighs around 20GB in total!!**
 
 Execute `sh deploy.sh cpu` to deploy the app on CPU. If you have installed `nvidia-docker`,
 you can also deploy on GPU. The inference is 3 times faster on GPU. To deploy on GPU, run `sh deploy.sh gpu`. 
