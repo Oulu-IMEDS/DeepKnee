@@ -12,7 +12,7 @@ Scientific reports 8.1 (2018): 1727.
 
 # Authors
 The whole package was built by Aleksei Tiulpin (@lext). Egor Panfilov (@soupault)
-has built most of DeepKnee v1: https://github.com/MIPT-Oulu/DeepKnee-web (RIP). 
+has built most of DeepKnee v1: https://github.com/MIPT-Oulu/DeepKnee-web (archived). 
 The current version of DeepKnee uses only the UI from the previous version.
 
 # Disclaimer
